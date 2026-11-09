@@ -1,0 +1,125 @@
+{
+  "company": "FreshBrew Coffee",
+  "rules": [
+    {
+      "code": "T-1",
+      "category": "tone",
+      "title": "Friendly and warm",
+      "body": "Write like a friendly neighbour: short sentences, speak to the reader as you, no jargon."
+    },
+    {
+      "code": "T-2",
+      "category": "tone",
+      "title": "No shouting",
+      "body": "No all-caps words for emphasis and no more than one exclamation mark per post."
+    },
+    {
+      "code": "W-1",
+      "category": "terminology",
+      "title": "Product name",
+      "body": "Always write the product name exactly as FreshBrew Gold."
+    },
+    {
+      "code": "W-2",
+      "category": "terminology",
+      "title": "Say affordable",
+      "body": "Use the word affordable. Never use cheap."
+    },
+    {
+      "code": "C-1",
+      "category": "claims",
+      "title": "No absolute claims",
+      "body": "Do not use best, world's best, number one or guaranteed unless an approved fact supports it."
+    },
+    {
+      "code": "C-2",
+      "category": "claims",
+      "title": "No health claims",
+      "body": "Do not say our coffee cures, treats or prevents any condition, or boosts immunity."
+    },
+    {
+      "code": "C-3",
+      "category": "claims",
+      "title": "Offers need dates",
+      "body": "Any discount or offer must state its end date and be confirmed by a reviewer."
+    },
+    {
+      "code": "FA-1",
+      "category": "facts",
+      "title": "Numbers must match",
+      "body": "Any number about sourcing, stores, founding year or delivery must match an approved fact exactly."
+    },
+    {
+      "code": "A-1",
+      "category": "accessibility",
+      "title": "Alt text",
+      "body": "Every image needs alt text: one clear sentence that describes what is shown."
+    },
+    {
+      "code": "A-2",
+      "category": "accessibility",
+      "title": "Clear links and hashtags",
+      "body": "Never use click here as link text. Write hashtags in CamelCase, for example #FreshBrewMorning."
+    },
+    {
+      "code": "V-1",
+      "category": "visual",
+      "title": "Logo and colours",
+      "body": "Use only the official FreshBrew logo and the brand colours cream, espresso brown and gold."
+    }
+  ],
+  "facts": [
+    {
+      "code": "F-1",
+      "statement": "FreshBrew beans come from three countries: Colombia, Ethiopia and Brazil.",
+      "source": "Sourcing report 2026"
+    },
+    {
+      "code": "F-2",
+      "statement": "FreshBrew was founded in 2018.",
+      "source": "Company profile"
+    },
+    {
+      "code": "F-3",
+      "statement": "FreshBrew Gold is a medium roast.",
+      "source": "Product sheet"
+    },
+    {
+      "code": "F-4",
+      "statement": "FreshBrew has 42 stores across India.",
+      "source": "Retail team, October 2026"
+    },
+    {
+      "code": "F-5",
+      "statement": "Delivery is free on orders above Rs 499.",
+      "source": "Pricing team"
+    }
+  ],
+  "terms": [
+    {
+      "preferred": "affordable",
+      "avoid": "cheap",
+      "note": "Never describe our prices as cheap"
+    },
+    {
+      "preferred": "FreshBrew Gold",
+      "avoid": "Fresh Brew Gold, freshbrew gold",
+      "note": "Exact spelling of the product name"
+    },
+    {
+      "preferred": "coffee lovers",
+      "avoid": "caffeine addicts",
+      "note": "Respectful wording"
+    },
+    {
+      "preferred": "stores",
+      "avoid": "outlets",
+      "note": "Our word for shops"
+    },
+    {
+      "preferred": "customers",
+      "avoid": "guys",
+      "note": "Professional wording"
+    }
+  ]
+}
