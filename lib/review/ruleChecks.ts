@@ -51,7 +51,7 @@ export function ruleChecks(
 
   // 1. Terminology: find avoid text in content (case insensitive, whole word)
   for (const term of terms) {
-    const avoid = (term.avoid || term.term || term.avoid_text || '').trim();
+    const avoidRaw = (term.avoid || term.term || term.avoid_text || '').trim();
     const preferred = (
       term.preferred ||
       term.replacement ||
@@ -59,28 +59,39 @@ export function ruleChecks(
       ''
     ).trim();
 
-    if (!avoid) continue;
+    if (!avoidRaw) continue;
 
-    const escaped = escapeRegex(avoid);
-    const leftBoundary = /^\w/.test(avoid) ? '\\b' : '(?:^|(?<=\\W))';
-    const rightBoundary = /\w$/.test(avoid) ? '\\b' : '(?:$|(?=\\W))';
-    const regex = new RegExp(`${leftBoundary}${escaped}${rightBoundary}`, 'gi');
+    const avoidPhrases = avoidRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(text)) !== null) {
-      const quoted = match[0];
-      findings.push({
-        category: 'terminology',
-        severity: 'medium',
-        quoted_text: quoted,
-        explanation: preferred
-          ? `Use preferred term "${preferred}" instead of "${quoted}".`
-          : `Avoid using "${quoted}".`,
-        rule_code: 'TERM',
-        suggestion: preferred ? preserveCase(quoted, preferred) : '',
-        confidence: 1,
-        source: 'rule_check',
-      });
+    for (const avoid of avoidPhrases) {
+      const escaped = escapeRegex(avoid);
+      const leftBoundary = /^\w/.test(avoid) ? '\\b' : '(?:^|(?<=\\W))';
+      const rightBoundary = /\w$/.test(avoid) ? '\\b' : '(?:$|(?=\\W))';
+      const regex = new RegExp(`${leftBoundary}${escaped}${rightBoundary}`, 'gi');
+
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(text)) !== null) {
+        const quoted = match[0];
+        // If the matched text is already identical to the preferred wording, skip
+        if (preferred && quoted === preferred) {
+          continue;
+        }
+        findings.push({
+          category: 'terminology',
+          severity: 'medium',
+          quoted_text: quoted,
+          explanation: preferred
+            ? `Use preferred term "${preferred}" instead of "${quoted}".`
+            : `Avoid using "${quoted}".`,
+          rule_code: 'TERM',
+          suggestion: preferred ? preserveCase(quoted, preferred) : '',
+          confidence: 1,
+          source: 'rule_check',
+        });
+      }
     }
   }
 

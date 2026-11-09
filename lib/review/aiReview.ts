@@ -1,4 +1,3 @@
-import 'server-only';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import type { Finding } from '../types';
@@ -67,21 +66,6 @@ function cleanJson(raw: string): string {
 function sanitizeMessage(msg: string, secret?: string): string {
   if (!secret) return msg;
   return msg.split(secret).join('[REDACTED]');
-}
-
-async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
-  let timer: NodeJS.Timeout | null = null;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      reject(new Error(`aiReview timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([fn(), timeoutPromise]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
 }
 
 export async function aiReview(
@@ -171,20 +155,30 @@ ${text}
   let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
+    const abortController = new AbortController();
+    const timeoutHandle = setTimeout(() => {
+      abortController.abort();
+    }, 20_000);
+
     try {
-      const rawText = await withTimeout(async () => {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model,
-          contents: promptContent,
-          config: {
-            systemInstruction,
-            temperature: 0.1,
-            responseMimeType: 'application/json',
-          },
-        });
-        return response.text;
-      }, 20_000);
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: { timeout: 20_000 },
+      });
+
+      const response = await ai.models.generateContent({
+        model,
+        contents: promptContent,
+        config: {
+          systemInstruction,
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+          abortSignal: abortController.signal,
+        },
+      });
+
+      clearTimeout(timeoutHandle);
+      const rawText = response.text;
 
       if (!rawText) {
         return { findings: [], status: 'ok' };
@@ -247,9 +241,9 @@ ${text}
 
       return { findings, status: 'ok' };
     } catch (err) {
+      clearTimeout(timeoutHandle);
       lastError = err;
       if (attempt === 1) {
-        // Wait 1 second before retry
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
