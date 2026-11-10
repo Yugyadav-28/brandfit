@@ -60,7 +60,7 @@ export async function createCompanyAction(
 
   if (companyError || !company) {
     console.error("Failed to create company:", companyError);
-    return { error: "Unable to create company. Please try again." };
+    return { error: "Unable to create your company workspace. Please try again." };
   }
 
   const { error: memberError } = await admin.from("memberships").insert({
@@ -72,7 +72,7 @@ export async function createCompanyAction(
 
   if (memberError) {
     console.error("Failed to add employer membership:", memberError);
-    return { error: "Company was created, but failed to assign employer role." };
+    return { error: "The company was created, but we couldn't assign your account as the employer. Please try refreshing." };
   }
 
   await logAudit({
@@ -113,11 +113,11 @@ export async function joinCompanyAction(
 
   if (findError) {
     console.error("Error looking up company:", findError);
-    return { error: "An error occurred while finding the company. Please try again." };
+    return { error: "We couldn't check that join code right now. Please try again in a moment." };
   }
 
   if (!company) {
-    return { error: "No company found with that join code. Please check the code and try again." };
+    return { error: "We couldn't find a company with that join code. Please check the 6 characters and try again." };
   }
 
   const { data: existingMember } = await admin
@@ -137,7 +137,7 @@ export async function joinCompanyAction(
 
     if (memberError) {
       console.error("Error creating membership:", memberError);
-      return { error: "Failed to join company. Please try again." };
+      return { error: "Unable to join the company right now. Please try again." };
     }
 
     await logAudit({

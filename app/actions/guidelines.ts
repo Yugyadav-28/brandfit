@@ -42,15 +42,15 @@ export async function saveRuleAction(
   const title = data.title?.trim();
   const body = data.body?.trim();
 
-  if (!code) return { error: "Rule code is required." };
+  if (!code) return { error: "Please enter a rule code." };
   if (!category || !VALID_CATEGORIES.includes(category as (typeof VALID_CATEGORIES)[number])) {
     return {
       error:
-        "Please select a valid category (tone, terminology, claims, facts, visual, accessibility).",
+        "Please select a category (tone, terminology, claims, facts, visual, or accessibility).",
     };
   }
-  if (!title) return { error: "Rule title is required." };
-  if (!body) return { error: "Rule body is required." };
+  if (!title) return { error: "Please enter a title for the rule." };
+  if (!body) return { error: "Please enter the rule instructions." };
 
   // Check code uniqueness per company
   const { data: existing } = await admin
@@ -62,7 +62,7 @@ export async function saveRuleAction(
 
   if (existing && existing.id !== data.id) {
     return {
-      error: `Rule code "${code}" is already in use for this company. Please choose a unique code.`,
+      error: `Rule code "${code}" is already taken in your company. Please choose a different code.`,
     };
   }
 
@@ -81,7 +81,7 @@ export async function saveRuleAction(
 
     if (error) {
       console.error("Failed to update rule:", error);
-      return { error: "Failed to update rule. Please try again." };
+      return { error: "Unable to update this rule right now. Please try again." };
     }
   } else {
     // Insert new rule
@@ -95,7 +95,7 @@ export async function saveRuleAction(
 
     if (error) {
       console.error("Failed to create rule:", error);
-      return { error: "Failed to create rule. Please try again." };
+      return { error: "Unable to save this rule right now. Please try again." };
     }
   }
 
@@ -131,7 +131,7 @@ export async function deleteRuleAction(
 
   if (error) {
     console.error("Failed to delete rule:", error);
-    return { error: "Failed to delete rule. Please try again." };
+    return { error: "Unable to delete this rule right now. Please try again." };
   }
 
   await logAudit({
@@ -166,8 +166,8 @@ export async function saveFactAction(
   const source = data.source?.trim() || null;
   const updated_on = data.updated_on || new Date().toISOString().split("T")[0];
 
-  if (!code) return { error: "Fact code is required." };
-  if (!statement) return { error: "Fact statement is required." };
+  if (!code) return { error: "Please enter a fact code." };
+  if (!statement) return { error: "Please enter the factual statement." };
 
   // Check code uniqueness per company
   const { data: existing } = await admin
@@ -179,7 +179,7 @@ export async function saveFactAction(
 
   if (existing && existing.id !== data.id) {
     return {
-      error: `Fact code "${code}" is already in use for this company. Please choose a unique code.`,
+      error: `Fact code "${code}" is already taken in your company. Please choose a different code.`,
     };
   }
 
@@ -197,7 +197,7 @@ export async function saveFactAction(
 
     if (error) {
       console.error("Failed to update fact:", error);
-      return { error: "Failed to update fact. Please try again." };
+      return { error: "Unable to update this fact right now. Please try again." };
     }
   } else {
     const { error } = await admin.from("facts").insert({
@@ -210,7 +210,7 @@ export async function saveFactAction(
 
     if (error) {
       console.error("Failed to create fact:", error);
-      return { error: "Failed to create fact. Please try again." };
+      return { error: "Unable to save this fact right now. Please try again." };
     }
   }
 
@@ -246,7 +246,7 @@ export async function deleteFactAction(
 
   if (error) {
     console.error("Failed to delete fact:", error);
-    return { error: "Failed to delete fact. Please try again." };
+    return { error: "Unable to delete this fact right now. Please try again." };
   }
 
   await logAudit({
@@ -280,8 +280,8 @@ export async function saveTermAction(
   const avoid = data.avoid?.trim();
   const note = data.note?.trim() || null;
 
-  if (!preferred) return { error: "Preferred term is required." };
-  if (!avoid) return { error: "Avoid term is required." };
+  if (!preferred) return { error: "Please enter the preferred term." };
+  if (!avoid) return { error: "Please enter the term to avoid." };
 
   if (data.id) {
     const { error } = await admin
@@ -296,7 +296,7 @@ export async function saveTermAction(
 
     if (error) {
       console.error("Failed to update term:", error);
-      return { error: "Failed to update term. Please try again." };
+      return { error: "Unable to update this term right now. Please try again." };
     }
   } else {
     const { error } = await admin.from("terms").insert({
@@ -308,7 +308,7 @@ export async function saveTermAction(
 
     if (error) {
       console.error("Failed to create term:", error);
-      return { error: "Failed to create term. Please try again." };
+      return { error: "Unable to save this term right now. Please try again." };
     }
   }
 
@@ -343,7 +343,7 @@ export async function deleteTermAction(
 
   if (error) {
     console.error("Failed to delete term:", error);
-    return { error: "Failed to delete term. Please try again." };
+    return { error: "Unable to delete this term right now. Please try again." };
   }
 
   await logAudit({
@@ -384,7 +384,7 @@ export async function loadSampleBrandKitAction(
   }
 
   if (!rawJson) {
-    return { error: "Could not find seed/sample-brandkit.json file." };
+    return { error: "Unable to find the sample brand kit file on the server." };
   }
 
   let kit: {
@@ -398,7 +398,7 @@ export async function loadSampleBrandKitAction(
     kit = JSON.parse(rawJson);
   } catch (err) {
     console.error("JSON parse error:", err);
-    return { error: "Failed to parse sample brand kit file." };
+    return { error: "The sample brand kit file could not be read." };
   }
 
   // 1. Insert rules (skip existing codes)

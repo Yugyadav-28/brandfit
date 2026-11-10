@@ -1,13 +1,7 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LogoutButton } from "@/components/logout-button";
-import { Button } from "@/components/ui/button";
-
-interface NavLinkItem {
-  label: string;
-  href: string;
-}
+import { NavClient, type NavLinkItem } from "@/components/nav-client";
 
 export async function Nav() {
   const supabase = await createClient();
@@ -16,36 +10,10 @@ export async function Nav() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return (
-      <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="text-lg font-bold tracking-tight text-foreground hover:opacity-90"
-            >
-              BrandFit
-            </Link>
-            <nav className="flex items-center gap-4 text-sm font-medium">
-              <Link
-                href="/disclosure"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Disclosure
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/auth/login">Sign in</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/auth/sign-up">Sign up</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
-    );
+    const publicLinks: NavLinkItem[] = [
+      { label: "Disclosure", href: "/disclosure" },
+    ];
+    return <NavClient links={publicLinks} />;
   }
 
   const admin = createAdminClient();
@@ -106,52 +74,12 @@ export async function Nav() {
   }
 
   return (
-    <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:h-16 md:items-center md:justify-between px-4 sm:px-6 py-3 md:py-0 gap-3 md:gap-0">
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="text-lg font-bold tracking-tight text-foreground hover:opacity-90"
-            >
-              BrandFit
-            </Link>
-            {company && (
-              <span className="inline-flex items-center text-sm font-semibold text-foreground px-2 py-0.5 rounded bg-muted border">
-                {company.name}
-              </span>
-            )}
-          </div>
-
-          {role === "employer" && company?.join_code && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-              <span className="text-muted-foreground font-normal">Join code:</span>
-              <span className="font-mono font-bold tracking-wider">
-                {company.join_code}
-              </span>
-            </div>
-          )}
-
-          <nav className="flex flex-wrap items-center gap-1 sm:gap-2 text-sm font-medium">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center justify-between md:justify-end gap-3 pt-2 md:pt-0 border-t md:border-t-0">
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-            {user.email}
-          </span>
-          <LogoutButton />
-        </div>
-      </div>
-    </header>
+    <NavClient
+      userEmail={user.email}
+      company={company}
+      role={role}
+      links={links}
+      logoutSlot={<LogoutButton />}
+    />
   );
 }

@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 interface JoinFormProps {
   initialCode?: string;
@@ -29,8 +30,7 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
       <CardHeader>
         <CardTitle className="text-2xl">Join a company</CardTitle>
         <CardDescription>
-          Enter the 6-character join code provided by your employer to join their
-          brand workspace.
+          Enter the 6-character join code provided by your employer to join their brand workspace.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -45,7 +45,7 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
               defaultValue={initialCode}
               required
               autoFocus={!initialCode}
-              className="uppercase tracking-widest font-mono"
+              className="uppercase tracking-widest font-mono focus-visible:ring-2 focus-visible:ring-ring"
               aria-describedby={state?.error ? "join-error" : undefined}
             />
           </div>
@@ -60,6 +60,7 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
               defaultValue={defaultDisplayName}
               required
               autoFocus={!!initialCode}
+              className="focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
@@ -67,9 +68,10 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
             <div
               id="join-error"
               role="alert"
-              className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
+              className="flex items-center gap-2 text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
             >
-              {state.error}
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{state.error}</span>
             </div>
           )}
 

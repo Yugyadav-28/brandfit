@@ -40,7 +40,7 @@ export async function switchMemberRoleAction(
     .single();
 
   if (compErr || !company) {
-    return { error: "Company not found." };
+    return { error: "We couldn't find this company workspace." };
   }
 
   if (targetUserId === company.owner_id) {
@@ -56,11 +56,11 @@ export async function switchMemberRoleAction(
     .maybeSingle();
 
   if (memErr || !targetMember) {
-    return { error: "Member not found in this company." };
+    return { error: "We couldn't find this member in your company." };
   }
 
   if (targetMember.role === "employer") {
-    return { error: "Employer roles cannot be switched." };
+    return { error: "Employer roles cannot be switched to employee or reviewer." };
   }
 
   const newRole: Role = targetMember.role === "employee" ? "reviewer" : "employee";
@@ -73,7 +73,7 @@ export async function switchMemberRoleAction(
 
   if (updateErr) {
     console.error("Failed to update role:", updateErr);
-    return { error: "Failed to update role. Please try again." };
+    return { error: "Unable to update member role right now. Please try again." };
   }
 
   await logAudit({
@@ -108,7 +108,7 @@ export async function removeMemberAction(
     .single();
 
   if (compErr || !company) {
-    return { error: "Company not found." };
+    return { error: "We couldn't find this company workspace." };
   }
 
   if (targetUserId === company.owner_id) {
@@ -124,11 +124,11 @@ export async function removeMemberAction(
     .maybeSingle();
 
   if (!targetMember) {
-    return { error: "Member not found." };
+    return { error: "We couldn't find this member." };
   }
 
   if (targetMember.role === "employer") {
-    return { error: "Employers cannot be removed." };
+    return { error: "Employers cannot be removed from the company." };
   }
 
   const { error: delErr } = await admin
@@ -139,7 +139,7 @@ export async function removeMemberAction(
 
   if (delErr) {
     console.error("Failed to remove member:", delErr);
-    return { error: "Failed to remove member. Please try again." };
+    return { error: "Unable to remove this member right now. Please try again." };
   }
 
   await logAudit({
@@ -186,7 +186,7 @@ export async function regenerateJoinCodeAction(
 
   if (updateErr) {
     console.error("Failed to regenerate code:", updateErr);
-    return { error: "Failed to regenerate join code. Please try again." };
+    return { error: "Unable to generate a new join code right now. Please try again." };
   }
 
   revalidatePath("/company/members");

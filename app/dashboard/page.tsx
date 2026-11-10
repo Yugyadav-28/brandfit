@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Button } from "@/components/ui/button";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   BookOpen,
   AlertTriangle,
   History,
+  AlertCircle,
 } from "lucide-react";
 
 export const metadata = {
@@ -239,12 +241,14 @@ async function DashboardContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold tracking-tight">{company.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-primary/10 text-primary border border-primary/20 capitalize">
-              {activeMembership.role}
+              {company.name} ({activeMembership.role})
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">Workspace Dashboard</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Review submissions waiting for approval, track team activity, and manage company brand settings.
+          </p>
         </div>
 
         {isEmployer && (
@@ -255,7 +259,7 @@ async function DashboardContent() {
             </span>
             <Link
               href={`/join?code=${company.join_code}`}
-              className="text-xs underline text-primary hover:text-primary/80 ml-1"
+              className="text-xs underline text-primary hover:text-primary/80 ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             >
               Share
             </Link>
@@ -313,8 +317,20 @@ async function DashboardContent() {
         {waitingSubmissions.length === 0 ? (
           <EmptyState
             icon={<ClipboardCheck className="h-8 w-8" />}
-            heading="No submissions waiting"
-            body="Once a team member sends content for review it will appear here. Invite employees from the Members page so they can start submitting."
+            heading="No submissions waiting for review"
+            body="When team members submit content, it will appear here for review. You can create a test submission or invite teammates to start submitting."
+            action={
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <Button asChild size="sm">
+                  <Link href="/submit">Submit a post</Link>
+                </Button>
+                {isEmployer && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/company/members">Invite team members</Link>
+                  </Button>
+                )}
+              </div>
+            }
           />
         ) : (
           <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
@@ -387,8 +403,13 @@ async function DashboardContent() {
           {employeeStats.length === 0 ? (
             <EmptyState
               icon={<Users className="h-8 w-8" />}
-              heading="No employees yet"
-              body="Share the company join code from the Members page so employees can join and start submitting content."
+              heading="No employee activity yet"
+              body="Share the company join code with your teammates so they can join and start submitting content."
+              action={
+                <Button asChild size="sm">
+                  <Link href="/company/members">Manage members &amp; get join code</Link>
+                </Button>
+              }
             />
           ) : (
             <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
@@ -422,7 +443,8 @@ async function DashboardContent() {
                         </td>
                         <td className="px-5 py-4 text-center">
                           {emp.accepted > 0 ? (
-                            <span className="text-green-700 dark:text-green-400 font-medium">
+                            <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400 font-medium">
+                              <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                               {emp.accepted}
                             </span>
                           ) : (
@@ -431,7 +453,8 @@ async function DashboardContent() {
                         </td>
                         <td className="px-5 py-4 text-center">
                           {emp.rejected > 0 ? (
-                            <span className="text-destructive font-medium">
+                            <span className="inline-flex items-center gap-1 text-destructive font-medium">
+                              <AlertCircle className="h-3 w-3" aria-hidden="true" />
                               {emp.rejected}
                             </span>
                           ) : (
@@ -441,7 +464,7 @@ async function DashboardContent() {
                         <td className="px-5 py-4 text-center">
                           {emp.repeated_mistakes > 0 ? (
                             <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400 font-semibold">
-                              <AlertTriangle className="h-3.5 w-3.5" />
+                              <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                               {emp.repeated_mistakes}
                             </span>
                           ) : (
@@ -514,18 +537,23 @@ function EmptyState({
   icon,
   heading,
   body,
+  action,
 }: {
   icon: React.ReactNode;
   heading: string;
   body: string;
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="border rounded-lg bg-card p-10 text-center space-y-3">
+    <div className="border rounded-lg bg-card p-10 text-center space-y-4">
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
         {icon}
       </div>
-      <p className="font-semibold text-foreground">{heading}</p>
-      <p className="text-sm text-muted-foreground max-w-sm mx-auto">{body}</p>
+      <div className="space-y-1">
+        <p className="font-semibold text-foreground text-base">{heading}</p>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">{body}</p>
+      </div>
+      {action && <div className="pt-2">{action}</div>}
     </div>
   );
 }
@@ -542,7 +570,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/40 transition-colors"
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {icon}
       {label}
