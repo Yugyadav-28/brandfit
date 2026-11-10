@@ -9,6 +9,7 @@ import {
   RuleItem,
   FactItem,
   TermItem,
+  VersionData,
 } from './submission-review-client';
 import { Button } from '@/components/ui/button';
 
@@ -56,27 +57,27 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
   // 3. Verify membership in the company
   await requireMember(submission.company_id);
 
-  // 4. Load latest version
-  const { data: latestVersion, error: verError } = await admin
+  // 4. Load all versions for this submission, newest first
+  const { data: allVersions, error: verError } = await admin
     .from('versions')
     .select('*')
     .eq('submission_id', id)
-    .order('version_no', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('version_no', { ascending: false });
 
-  if (verError || !latestVersion) {
+  if (verError || !allVersions || allVersions.length === 0) {
     notFound();
   }
 
-  // 5. Load findings for latest version
+  const versionIds = allVersions.map((v) => v.id);
+
+  // 5. Load findings for all versions of this submission
   const { data: findingsData, error: findError } = await admin
     .from('findings')
     .select('*')
-    .eq('version_id', latestVersion.id);
+    .in('version_id', versionIds);
 
   if (findError) {
-    console.error('Error fetching findings for version:', findError);
+    console.error('Error fetching findings for versions:', findError);
   }
 
   // 6. Load company rules, facts, and terms for citations
@@ -90,6 +91,7 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
   const facts = (factsRes.data ?? []) as FactItem[];
   const terms = (termsRes.data ?? []) as TermItem[];
   const findings = (findingsData ?? []) as FindingItem[];
+  const versions = allVersions as VersionData[];
 
   return (
     <SubmissionReviewClient
@@ -100,11 +102,7 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
         company_id: submission.company_id,
         author_id: submission.author_id,
       }}
-      latestVersion={{
-        id: latestVersion.id,
-        version_no: latestVersion.version_no,
-        content: latestVersion.content,
-      }}
+      initialVersions={versions}
       initialFindings={findings}
       rules={rules}
       facts={facts}
