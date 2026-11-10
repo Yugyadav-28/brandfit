@@ -80,11 +80,18 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
     console.error('Error fetching findings for versions:', findError);
   }
 
-  // 6. Load company rules, facts, and terms for citations
-  const [rulesRes, factsRes, termsRes] = await Promise.all([
+  // 6. Load company rules, facts, terms, and latest approval decision
+  const [rulesRes, factsRes, termsRes, approvalRes] = await Promise.all([
     admin.from('rules').select('*').eq('company_id', submission.company_id),
     admin.from('facts').select('*').eq('company_id', submission.company_id),
     admin.from('terms').select('*').eq('company_id', submission.company_id),
+    admin
+      .from('approvals')
+      .select('*')
+      .eq('submission_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const rules = (rulesRes.data ?? []) as RuleItem[];
@@ -92,6 +99,7 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
   const terms = (termsRes.data ?? []) as TermItem[];
   const findings = (findingsData ?? []) as FindingItem[];
   const versions = allVersions as VersionData[];
+  const latestApproval = approvalRes.data ?? null;
 
   return (
     <SubmissionReviewClient
@@ -108,6 +116,11 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
       facts={facts}
       terms={terms}
       initialAiStatus={aiStatus === 'unavailable' ? 'unavailable' : 'ok'}
+      reviewerFeedbackNote={
+        latestApproval?.decision === 'changes_requested'
+          ? latestApproval.note || null
+          : null
+      }
     />
   );
 }

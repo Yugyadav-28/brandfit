@@ -81,6 +81,7 @@ interface SubmissionReviewClientProps {
   facts: FactItem[];
   terms: TermItem[];
   initialAiStatus: 'ok' | 'unavailable';
+  reviewerFeedbackNote?: string | null;
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -170,6 +171,7 @@ export function SubmissionReviewClient({
   facts,
   terms,
   initialAiStatus,
+  reviewerFeedbackNote,
 }: SubmissionReviewClientProps) {
   const [versions, setVersions] = useState<VersionData[]>(() => {
     return [...initialVersions].sort((a, b) => b.version_no - a.version_no);
@@ -701,6 +703,38 @@ export function SubmissionReviewClient({
           >
             Switch to Latest (v{latestVersion.version_no})
           </Button>
+        </div>
+      )}
+
+      {/* Reviewer Feedback / Changes Requested Banner */}
+      {submissionStatus === 'changes_requested' && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 text-amber-900 dark:text-amber-200 shadow-sm space-y-2.5"
+        >
+          <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="text-base">Changes Requested by Reviewer</span>
+          </div>
+          {reviewerFeedbackNote ? (
+            <div className="pl-7 space-y-1">
+              <span className="text-xs uppercase font-bold text-amber-700 dark:text-amber-400">
+                Reviewer Feedback Note:
+              </span>
+              <blockquote className="text-sm font-medium italic border-l-2 border-amber-400 pl-3 py-1 bg-amber-100/50 dark:bg-amber-900/30 rounded-r text-foreground">
+                &ldquo;{reviewerFeedbackNote}&rdquo;
+              </blockquote>
+            </div>
+          ) : (
+            <p className="text-sm pl-7 text-muted-foreground">
+              The reviewer has requested revisions before approving this submission.
+            </p>
+          )}
+          <p className="text-xs pl-7 text-muted-foreground">
+            Edit your working copy below to address the requested changes, click{' '}
+            <strong className="text-foreground">&quot;Re-check&quot;</strong> to create a new version, and click{' '}
+            <strong className="text-foreground">&quot;Send for review&quot;</strong> to submit again.
+          </p>
         </div>
       )}
 
