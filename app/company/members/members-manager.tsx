@@ -18,6 +18,7 @@ import {
   X,
   Crown,
   Share2,
+  Users,
 } from "lucide-react";
 
 export interface MemberItem {
@@ -132,8 +133,7 @@ export function MembersManager({
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Manage your brand workspace members, assign reviewer permissions, and
-            invite teammates.
+            Manage your team roles, revoke access, and share your company join code to invite new members.
           </p>
         </div>
       </div>
@@ -216,13 +216,74 @@ export function MembersManager({
         </div>
       )}
 
+      {/* Single member invite helper */}
+      {members.length === 1 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-primary/20 bg-primary/5 gap-3 text-sm">
+          <div className="flex items-center gap-3">
+            <Users className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-medium text-foreground">You are the only member in this workspace</p>
+              <p className="text-xs text-muted-foreground">
+                Invite employees and reviewers by sharing your 6-character join code or direct invite link.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              navigator.clipboard?.writeText(
+                `${window.location.origin}/join?code=${joinCode}`,
+              );
+              setFeedback({
+                type: "success",
+                message: "Copied join link to clipboard!",
+              });
+            }}
+            className="shrink-0 flex items-center gap-1.5 border-primary/30 hover:bg-primary/10"
+          >
+            <Share2 className="h-3.5 w-3.5" /> Copy invite link
+          </Button>
+        </div>
+      )}
+
       {/* Members Table */}
       <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
         <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
           <h2 className="font-semibold text-base">Members ({members.length})</h2>
         </div>
 
-        <div className="overflow-x-auto">
+        {members.length === 0 ? (
+          <div className="p-10 text-center space-y-4">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+              <Users className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground text-base">No team members yet</p>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                Share your join code or copy the invite link so teammates can join.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard?.writeText(
+                  `${window.location.origin}/join?code=${joinCode}`,
+                );
+                setFeedback({
+                  type: "success",
+                  message: "Copied join link to clipboard!",
+                });
+              }}
+              className="inline-flex items-center gap-1.5"
+            >
+              <Share2 className="h-4 w-4" /> Copy invite link
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/60 text-muted-foreground border-b text-xs uppercase tracking-wider">
               <tr>
@@ -355,6 +416,7 @@ export function MembersManager({
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* CONFIRM REGENERATE JOIN CODE MODAL */}

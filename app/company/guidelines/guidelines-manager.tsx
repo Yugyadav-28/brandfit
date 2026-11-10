@@ -264,7 +264,7 @@ export function GuidelinesManager({
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Configure the brand rules, approved facts, and vocabulary used for content checks.
+            Create and manage the brand rules, approved facts, and vocabulary that guide your team and power AI reviews.
           </p>
         </div>
 
@@ -311,17 +311,19 @@ export function GuidelinesManager({
 
       {/* Tabs */}
       <div className="flex items-center justify-between border-b pb-1">
-        <div className="flex gap-2">
+        <div role="tablist" aria-label="Brand Guidelines sections" className="flex gap-2">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "rules"}
             onClick={() => setActiveTab("rules")}
-            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === "rules"
-                ? "border-primary text-primary bg-primary/5"
+                ? "border-primary text-primary bg-primary/5 font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <FileText className="h-4 w-4" />
+            <FileText className="h-4 w-4" aria-hidden="true" />
             Rules
             <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted font-mono">
               {initialRules.length}
@@ -330,14 +332,16 @@ export function GuidelinesManager({
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "facts"}
             onClick={() => setActiveTab("facts")}
-            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === "facts"
-                ? "border-primary text-primary bg-primary/5"
+                ? "border-primary text-primary bg-primary/5 font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <HelpCircle className="h-4 w-4" />
+            <HelpCircle className="h-4 w-4" aria-hidden="true" />
             Facts
             <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted font-mono">
               {initialFacts.length}
@@ -346,14 +350,16 @@ export function GuidelinesManager({
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "terms"}
             onClick={() => setActiveTab("terms")}
-            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === "terms"
-                ? "border-primary text-primary bg-primary/5"
+                ? "border-primary text-primary bg-primary/5 font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <BookA className="h-4 w-4" />
+            <BookA className="h-4 w-4" aria-hidden="true" />
             Terms
             <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted font-mono">
               {initialTerms.length}
@@ -411,11 +417,39 @@ export function GuidelinesManager({
       {activeTab === "rules" && (
         <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
           {initialRules.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground space-y-3">
-              <p>No brand rules configured yet.</p>
-              <p className="text-xs">
-                Click &ldquo;Add Rule&rdquo; above or use &ldquo;Load sample brand kit&rdquo; to populate initial rules.
-              </p>
+            <div className="p-12 text-center text-muted-foreground space-y-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+                <FileText className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-base">No brand rules configured yet</p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Rules guide how content should be written — covering tone, claims, terminology, and accessibility.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setEditingRule(null);
+                    setRuleFormError(null);
+                    setRuleModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" /> Add your first rule
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleLoadSampleBrandKit}
+                  disabled={isPending}
+                  className="flex items-center gap-1.5"
+                >
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {isPending ? "Loading..." : "Load sample brand kit"}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -496,11 +530,39 @@ export function GuidelinesManager({
       {activeTab === "facts" && (
         <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
           {initialFacts.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground space-y-3">
-              <p>No approved facts configured yet.</p>
-              <p className="text-xs">
-                Click &ldquo;Add Fact&rdquo; above or use &ldquo;Load sample brand kit&rdquo; to populate initial facts.
-              </p>
+            <div className="p-12 text-center text-muted-foreground space-y-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+                <HelpCircle className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-base">No approved facts configured yet</p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Approved facts ensure numbers, dates, sourcing, and company claims are accurate and verifiable.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setEditingFact(null);
+                    setFactFormError(null);
+                    setFactModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" /> Add your first fact
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleLoadSampleBrandKit}
+                  disabled={isPending}
+                  className="flex items-center gap-1.5"
+                >
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {isPending ? "Loading..." : "Load sample brand kit"}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -584,11 +646,39 @@ export function GuidelinesManager({
       {activeTab === "terms" && (
         <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
           {initialTerms.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground space-y-3">
-              <p>No preferred or avoided terms configured yet.</p>
-              <p className="text-xs">
-                Click &ldquo;Add Term&rdquo; above or use &ldquo;Load sample brand kit&rdquo; to populate initial terms.
-              </p>
+            <div className="p-12 text-center text-muted-foreground space-y-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+                <BookA className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-base">No vocabulary terms configured yet</p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Define preferred and avoided words so all copy matches your organization&apos;s voice.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setEditingTerm(null);
+                    setTermFormError(null);
+                    setTermModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" /> Add your first term
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleLoadSampleBrandKit}
+                  disabled={isPending}
+                  className="flex items-center gap-1.5"
+                >
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {isPending ? "Loading..." : "Load sample brand kit"}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">

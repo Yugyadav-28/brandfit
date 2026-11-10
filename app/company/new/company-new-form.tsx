@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 export function CompanyNewForm() {
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
@@ -24,8 +25,7 @@ export function CompanyNewForm() {
       <CardHeader>
         <CardTitle className="text-2xl">Create a company</CardTitle>
         <CardDescription>
-          Start a new workspace for your organization. You will be set up as the
-          company employer.
+          Enter your company name to start a new brand workspace and invite your team.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -39,6 +39,7 @@ export function CompanyNewForm() {
               placeholder="e.g. FreshBrew Coffee"
               required
               autoFocus
+              className="focus-visible:ring-2 focus-visible:ring-ring"
               aria-describedby={state?.error ? "name-error" : undefined}
             />
           </div>
@@ -47,9 +48,10 @@ export function CompanyNewForm() {
             <div
               id="name-error"
               role="alert"
-              className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
+              className="flex items-center gap-2 text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
             >
-              {state.error}
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{state.error}</span>
             </div>
           )}
 

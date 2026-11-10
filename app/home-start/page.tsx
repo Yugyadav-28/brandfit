@@ -15,11 +15,10 @@ async function HomeStartContent() {
     <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10 max-w-2xl mx-auto w-full">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold tracking-tight mb-3">
-          Welcome to BrandFit
+          Get started with BrandFit
         </h1>
-        <p className="text-muted-foreground text-base">
-          You don&apos;t have any active company workspace yet. Choose how you&apos;d
-          like to get started:
+        <p className="text-muted-foreground text-base max-w-lg mx-auto">
+          Create a new brand workspace for your organization or enter a join code to join an existing company.
         </p>
       </div>
 

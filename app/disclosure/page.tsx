@@ -33,8 +33,7 @@ export default function DisclosurePage() {
           <AiBadge />
         </div>
         <p className="text-muted-foreground text-base leading-relaxed">
-          BrandFit uses artificial intelligence to assist human reviewers and creators.
-          Here is exactly what AI does, what data it receives, and where its limits lie.
+          Read how BrandFit uses the Google Gemini API to check content, what data is processed, and how humans keep control.
         </p>
       </div>
 
