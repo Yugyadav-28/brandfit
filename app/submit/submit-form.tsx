@@ -79,16 +79,16 @@ export function SubmitForm({ companies, defaultCompanyId }: SubmitFormProps) {
       // 2. POST /api/submissions/[id]/review while showing "Checking your content"
       setStatusMessage('Checking your content...');
 
-      let aiStatus = 'ok';
+      let aiStatus = 'unavailable';
       try {
         const reviewRes = await fetch(`/api/submissions/${submissionId}/review`, {
           method: 'POST',
         });
         const reviewData = await reviewRes.json();
-        if (!reviewRes.ok || reviewData.aiStatus === 'unavailable') {
+        if (reviewRes.ok && reviewData.aiStatus === 'ok') {
+          aiStatus = 'ok';
+        } else {
           aiStatus = 'unavailable';
-        } else if (reviewData.aiStatus) {
-          aiStatus = reviewData.aiStatus;
         }
       } catch (revErr) {
         console.error('Review check encountered an issue:', revErr);
@@ -97,9 +97,9 @@ export function SubmitForm({ companies, defaultCompanyId }: SubmitFormProps) {
 
       // 3. Redirect to /submit/[id]
       const targetUrl =
-        aiStatus === 'unavailable'
-          ? `/submit/${submissionId}?aiStatus=unavailable`
-          : `/submit/${submissionId}`;
+        aiStatus === 'ok'
+          ? `/submit/${submissionId}?aiStatus=ok`
+          : `/submit/${submissionId}?aiStatus=unavailable`;
 
       router.push(targetUrl);
     } catch (err: any) {

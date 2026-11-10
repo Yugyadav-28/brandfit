@@ -186,7 +186,7 @@ export function SubmissionReviewClient({
   const [allFindings, setAllFindings] =
     useState<FindingItem[]>(initialFindings);
   const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable'>(
-    initialAiStatus,
+    initialAiStatus === 'ok' ? 'ok' : 'unavailable',
   );
 
   // Async process flags
@@ -521,7 +521,7 @@ export function SubmissionReviewClient({
         ...newFindings,
       ]);
 
-      setAiStatus(revData.aiStatus || 'ok');
+      setAiStatus(revData.aiStatus === 'ok' ? 'ok' : 'unavailable');
       setSubmissionStatus('draft');
       setSuccessMessage(
         `Version ${newVersionNo} created! Re-check complete with ${newFindings.length} issue(s) flagged.`,
@@ -886,15 +886,38 @@ export function SubmissionReviewClient({
           </div>
 
           {displayedFindings.length === 0 ? (
-            <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
-              <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-foreground">
-                No Issues Flagged
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                Your content aligns with brand guidelines and approved facts.
-              </p>
-            </div>
+            aiStatus === 'ok' ? (
+              <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
+                <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-foreground">
+                  No Issues Flagged
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Your content aligns with brand guidelines and approved facts.
+                </p>
+              </div>
+            ) : (
+              <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card space-y-4">
+                <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto" />
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  Basic checks found nothing, but the AI review did not run, so this is not a full check.
+                </p>
+                <div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRecheck}
+                    disabled={isRechecking}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${isRechecking ? 'animate-spin' : ''}`}
+                    />
+                    <span>{isRechecking ? 'Re-checking...' : 'Try again'}</span>
+                  </Button>
+                </div>
+              </div>
+            )
           ) : (
             numberedFindings.map((finding) => {
               const citation = getCitationInfo(

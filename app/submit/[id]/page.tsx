@@ -115,7 +115,7 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
       rules={rules}
       facts={facts}
       terms={terms}
-      initialAiStatus={aiStatus === 'unavailable' ? 'unavailable' : 'ok'}
+      initialAiStatus={aiStatus === 'ok' ? 'ok' : 'unavailable'}
       reviewerFeedbackNote={
         latestApproval?.decision === 'changes_requested'
           ? latestApproval.note || null
