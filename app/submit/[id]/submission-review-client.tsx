@@ -14,7 +14,11 @@ import {
   FileCheck2,
   BookOpen,
   Info,
-  Save,
+  Send,
+  History,
+  RotateCcw,
+  Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
 
 export interface FindingItem {
@@ -63,13 +67,15 @@ export interface SubmissionData {
 
 export interface VersionData {
   id: string;
+  submission_id?: string;
   version_no: number;
   content: string;
+  created_at: string;
 }
 
 interface SubmissionReviewClientProps {
   submission: SubmissionData;
-  latestVersion: VersionData;
+  initialVersions: VersionData[];
   initialFindings: FindingItem[];
   rules: RuleItem[];
   facts: FactItem[];
@@ -82,6 +88,21 @@ const SEVERITY_RANK: Record<string, number> = {
   medium: 1,
   low: 2,
 };
+
+function formatVersionDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 function getCitationInfo(
   ruleCode: string,
@@ -143,50 +164,84 @@ function getCitationInfo(
 
 export function SubmissionReviewClient({
   submission,
-  latestVersion,
+  initialVersions,
   initialFindings,
   rules,
   facts,
   terms,
   initialAiStatus,
 }: SubmissionReviewClientProps) {
-  const [workingText, setWorkingText] = useState(latestVersion.content);
-  const [currentVersionNo, setCurrentVersionNo] = useState(
-    latestVersion.version_no,
-  );
-  const [findings, setFindings] = useState<FindingItem[]>(() => {
-    return [...initialFindings].sort(
-      (a, b) =>
-        (SEVERITY_RANK[a.severity] ?? 99) - (SEVERITY_RANK[b.severity] ?? 99),
-    );
+  const [versions, setVersions] = useState<VersionData[]>(() => {
+    return [...initialVersions].sort((a, b) => b.version_no - a.version_no);
   });
+  const [selectedVersionId, setSelectedVersionId] = useState<string>(
+    initialVersions[0]?.id || '',
+  );
+  const [workingText, setWorkingText] = useState(
+    initialVersions[0]?.content || '',
+  );
+  const [submissionStatus, setSubmissionStatus] = useState(submission.status);
+  const [allFindings, setAllFindings] =
+    useState<FindingItem[]>(initialFindings);
   const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable'>(
     initialAiStatus,
   );
-  const [isRetryingReview, setIsRetryingReview] = useState(false);
 
-  // Card interactive state
+  // Async process flags
+  const [isRechecking, setIsRechecking] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [showHighWarningModal, setShowHighWarningModal] = useState(false);
+
+  // Finding action state
   const [activeEditId, setActiveEditId] = useState<string | null>(null);
   const [customEditText, setCustomEditText] = useState('');
   const [activeRejectId, setActiveRejectId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // New version saving state
-  const [isSavingVersion, setIsSavingVersion] = useState(false);
-  const [saveVersionMessage, setSaveVersionMessage] = useState<string | null>(
-    null,
-  );
+  // Identify latest and active versions
+  const latestVersion = versions[0];
+  const activeVersion =
+    versions.find((v) => v.id === selectedVersionId) || latestVersion;
+  const isViewingLatest = activeVersion?.id === latestVersion?.id;
 
-  // Assign numbers to findings based on their severity order (high first)
+  // Active findings for the displayed version
+  const displayedFindings = useMemo(() => {
+    return allFindings
+      .filter((f) => f.version_id === activeVersion.id)
+      .sort(
+        (a, b) =>
+          (SEVERITY_RANK[a.severity] ?? 99) -
+          (SEVERITY_RANK[b.severity] ?? 99),
+      );
+  }, [allFindings, activeVersion.id]);
+
+  // Number findings in order (1, 2, 3...)
   const numberedFindings = useMemo(() => {
-    return findings.map((f, idx) => ({
+    return displayedFindings.map((f, idx) => ({
       ...f,
       findingNumber: idx + 1,
     }));
-  }, [findings]);
+  }, [displayedFindings]);
 
-  // Compute non-overlapping highlight spans on workingText for first occurrences only
+  // Pending high severity count on latest version
+  const latestFindings = useMemo(() => {
+    return allFindings.filter((f) => f.version_id === latestVersion?.id);
+  }, [allFindings, latestVersion?.id]);
+
+  const pendingHighFindings = useMemo(() => {
+    return latestFindings.filter(
+      (f) => f.severity === 'high' && f.decision === 'pending',
+    );
+  }, [latestFindings]);
+
+  // Text to display in highlighted box
+  const contentToHighlight = isViewingLatest
+    ? workingText
+    : activeVersion.content;
+
+  // Compute non-overlapping highlight spans for first occurrences only
   const highlightSpans = useMemo(() => {
     interface Span {
       start: number;
@@ -199,10 +254,9 @@ export function SubmissionReviewClient({
 
     const candidateSpans: Span[] = [];
 
-    // Find first match for each finding
     for (const f of numberedFindings) {
       if (!f.quoted_text) continue;
-      const startIdx = workingText.indexOf(f.quoted_text);
+      const startIdx = contentToHighlight.indexOf(f.quoted_text);
       if (startIdx !== -1) {
         candidateSpans.push({
           start: startIdx,
@@ -215,7 +269,7 @@ export function SubmissionReviewClient({
       }
     }
 
-    // Sort by start position
+    // Sort by position
     candidateSpans.sort((a, b) => a.start - b.start || b.end - a.end);
 
     // Pick non-overlapping spans
@@ -230,12 +284,12 @@ export function SubmissionReviewClient({
     }
 
     return resolved;
-  }, [workingText, numberedFindings]);
+  }, [contentToHighlight, numberedFindings]);
 
   // Render text with <mark> tags and number badges
-  const renderedContent = useMemo(() => {
+  const renderedHighlightedContent = useMemo(() => {
     if (highlightSpans.length === 0) {
-      return workingText;
+      return contentToHighlight;
     }
 
     const fragments: React.ReactNode[] = [];
@@ -243,10 +297,10 @@ export function SubmissionReviewClient({
 
     highlightSpans.forEach((span, idx) => {
       if (span.start > currentPos) {
-        fragments.push(workingText.slice(currentPos, span.start));
+        fragments.push(contentToHighlight.slice(currentPos, span.start));
       }
 
-      const matchText = workingText.slice(span.start, span.end);
+      const matchText = contentToHighlight.slice(span.start, span.end);
 
       fragments.push(
         <mark
@@ -266,16 +320,18 @@ export function SubmissionReviewClient({
       currentPos = span.end;
     });
 
-    if (currentPos < workingText.length) {
-      fragments.push(workingText.slice(currentPos));
+    if (currentPos < contentToHighlight.length) {
+      fragments.push(contentToHighlight.slice(currentPos));
     }
 
     return fragments;
-  }, [workingText, highlightSpans]);
+  }, [contentToHighlight, highlightSpans]);
 
-  // Handle Accept
+  // Handle Accept finding
   async function handleAccept(finding: FindingItem) {
+    if (!isViewingLatest) return;
     setActionError(null);
+    setSuccessMessage(null);
     try {
       const res = await fetch(`/api/findings/${finding.id}`, {
         method: 'PATCH',
@@ -288,11 +344,13 @@ export function SubmissionReviewClient({
         throw new Error(data.error || 'Failed to accept finding');
       }
 
-      // Apply suggestion to working copy (replaces first match)
-      setWorkingText((prev) => prev.replace(finding.quoted_text, finding.suggestion));
+      // Apply suggestion to working copy (replaces first occurrence)
+      setWorkingText((prev) =>
+        prev.replace(finding.quoted_text, finding.suggestion),
+      );
 
-      // Update finding locally without full reload
-      setFindings((prev) =>
+      // Update finding locally
+      setAllFindings((prev) =>
         prev.map((f) =>
           f.id === finding.id ? { ...f, decision: 'accepted' } : f,
         ),
@@ -304,7 +362,9 @@ export function SubmissionReviewClient({
 
   // Handle Edit Submit
   async function handleApplyEdit(finding: FindingItem) {
+    if (!isViewingLatest) return;
     setActionError(null);
+    setSuccessMessage(null);
     if (!customEditText.trim()) {
       setActionError('Replacement text cannot be empty');
       return;
@@ -331,7 +391,7 @@ export function SubmissionReviewClient({
       );
 
       // Update finding locally
-      setFindings((prev) =>
+      setAllFindings((prev) =>
         prev.map((f) =>
           f.id === finding.id
             ? { ...f, decision: 'edited', edited_text: customEditText.trim() }
@@ -348,7 +408,9 @@ export function SubmissionReviewClient({
 
   // Handle Reject Submit
   async function handleApplyReject(finding: FindingItem) {
+    if (!isViewingLatest) return;
     setActionError(null);
+    setSuccessMessage(null);
     if (!rejectNote.trim()) {
       setActionError('A short reason is required when rejecting a finding');
       return;
@@ -370,7 +432,7 @@ export function SubmissionReviewClient({
       }
 
       // Update finding locally
-      setFindings((prev) =>
+      setAllFindings((prev) =>
         prev.map((f) =>
           f.id === finding.id
             ? { ...f, decision: 'rejected', decision_note: rejectNote.trim() }
@@ -385,73 +447,128 @@ export function SubmissionReviewClient({
     }
   }
 
-  // Handle Retry Review when AI is unavailable
-  async function handleRetryReview() {
-    setIsRetryingReview(true);
+  // Handle Re-check:
+  // Calls POST /api/submissions/[id]/versions with working copy,
+  // then calls POST /api/submissions/[id]/review, and shows the new findings.
+  async function handleRecheck() {
+    setIsRechecking(true);
     setActionError(null);
+    setSuccessMessage(null);
 
     try {
-      const res = await fetch(`/api/submissions/${submission.id}/review`, {
+      if (workingText.length > 10000) {
+        throw new Error('Working copy exceeds the 10,000 character limit');
+      }
+
+      // 1. Create next version
+      const verRes = await fetch(
+        `/api/submissions/${submission.id}/versions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: workingText }),
+        },
+      );
+
+      const verData = await verRes.json();
+      if (!verRes.ok) {
+        throw new Error(verData.error || 'Failed to create new version');
+      }
+
+      const newVersionId = verData.versionId;
+      const newVersionNo = verData.versionNo;
+
+      // 2. Call review
+      const revRes = await fetch(`/api/submissions/${submission.id}/review`, {
         method: 'POST',
       });
-      const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to re-run review');
+      const revData = await revRes.json();
+      if (!revRes.ok) {
+        throw new Error(revData.error || 'Failed to review new version');
       }
 
-      setAiStatus(data.aiStatus || 'ok');
-      if (Array.isArray(data.findings)) {
-        setFindings(
-          data.findings.sort(
-            (a: FindingItem, b: FindingItem) =>
-              (SEVERITY_RANK[a.severity] ?? 99) -
-              (SEVERITY_RANK[b.severity] ?? 99),
-          ),
-        );
-      }
-    } catch (err: any) {
-      setActionError(err.message || 'Error retrying review');
-    } finally {
-      setIsRetryingReview(false);
-    }
-  }
+      const newVersionObj: VersionData = {
+        id: newVersionId,
+        submission_id: submission.id,
+        version_no: newVersionNo,
+        content: workingText,
+        created_at: new Date().toISOString(),
+      };
 
-  // Handle Save New Version
-  async function handleSaveNewVersion() {
-    setIsSavingVersion(true);
-    setSaveVersionMessage(null);
-    setActionError(null);
+      // Prepend the new version to versions
+      setVersions((prev) => [newVersionObj, ...prev]);
+      setSelectedVersionId(newVersionId);
 
-    try {
-      const res = await fetch(`/api/submissions/${submission.id}/versions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: workingText }),
-      });
+      // Replace findings for this version
+      const newFindings = Array.isArray(revData.findings)
+        ? revData.findings
+        : [];
+      setAllFindings((prev) => [
+        ...prev.filter((f) => f.version_id !== newVersionId),
+        ...newFindings,
+      ]);
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save new version');
-      }
-
-      setCurrentVersionNo((prev) => prev + 1);
-      setSaveVersionMessage(
-        `Changes saved as Version ${currentVersionNo + 1}!`,
+      setAiStatus(revData.aiStatus || 'ok');
+      setSubmissionStatus('draft');
+      setSuccessMessage(
+        `Version ${newVersionNo} created! Re-check complete with ${newFindings.length} issue(s) flagged.`,
       );
     } catch (err: any) {
-      setActionError(err.message || 'Error saving new version');
+      setActionError(err.message || 'Error during re-check');
     } finally {
-      setIsSavingVersion(false);
+      setIsRechecking(false);
     }
   }
 
-  const pendingCount = findings.filter((f) => f.decision === 'pending').length;
+  // Handle Send for review:
+  // If any high severity finding is still pending, show confirmation warning (do not block them).
+  function handleSendClick() {
+    setActionError(null);
+    setSuccessMessage(null);
+
+    if (pendingHighFindings.length > 0) {
+      setShowHighWarningModal(true);
+      return;
+    }
+
+    executeSendForReview();
+  }
+
+  async function executeSendForReview() {
+    setIsSending(true);
+    setActionError(null);
+
+    try {
+      const res = await fetch(`/api/submissions/${submission.id}/send`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send submission for review');
+      }
+
+      setSubmissionStatus('in_review');
+      setShowHighWarningModal(false);
+      setSuccessMessage(
+        'Submission sent for review! Status is now In Review.',
+      );
+    } catch (err: any) {
+      setActionError(err.message || 'Error sending submission for review');
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  const pendingCount = displayedFindings.filter(
+    (f) => f.decision === 'pending',
+  ).length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 w-full">
-      {/* Header with back navigation & title */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-7xl mx-auto px-4 py-8 w-full space-y-6">
+      {/* Top Breadcrumb & Status Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
         <div>
           <Link
             href="/submit"
@@ -460,101 +577,253 @@ export function SubmissionReviewClient({
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back to Submit</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {submission.title}
             </h1>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border bg-muted/60 text-muted-foreground uppercase">
-              {submission.status}
+            <span
+              className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border uppercase ${
+                submissionStatus === 'in_review'
+                  ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800'
+                  : submissionStatus === 'approved'
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800'
+                  : 'bg-muted/60 text-muted-foreground border-border'
+              }`}
+            >
+              {submissionStatus.replace('_', ' ')}
             </span>
-            <span className="text-xs font-mono text-muted-foreground">
-              v{currentVersionNo}
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
+              Viewing v{activeVersion.version_no}{' '}
+              {isViewingLatest ? '(Latest)' : '(History)'}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons: Re-check & Send for Review */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
-            onClick={handleSaveNewVersion}
-            disabled={isSavingVersion}
-            className="gap-1.5"
+            onClick={handleRecheck}
+            disabled={isRechecking || isSending}
+            className="gap-2"
           >
-            <Save className="h-4 w-4" />
+            <RotateCcw
+              className={`h-3.5 w-3.5 ${isRechecking ? 'animate-spin' : ''}`}
+            />
+            <span>{isRechecking ? 'Re-checking...' : 'Re-check'}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handleSendClick}
+            disabled={
+              isSending ||
+              isRechecking ||
+              submissionStatus === 'in_review'
+            }
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Send className="h-3.5 w-3.5" />
             <span>
-              {isSavingVersion ? 'Saving...' : 'Save as New Version'}
+              {submissionStatus === 'in_review'
+                ? 'In Review'
+                : isSending
+                ? 'Sending...'
+                : 'Send for review'}
             </span>
           </Button>
         </div>
       </div>
 
-      {/* AI Unavailable Banner */}
-      {aiStatus === 'unavailable' && (
-        <div
-          role="alert"
-          className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 text-amber-900 dark:text-amber-200 shadow-sm"
-        >
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span className="text-sm font-medium">
-              The AI reviewer is unavailable right now, only basic checks ran. You can try again.
+      {/* Version History List (Version 1, Version 2, etc. with date) */}
+      <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <History className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">
+            Version History
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            ({versions.length} total)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {versions.map((ver) => {
+            const isSelected = ver.id === activeVersion.id;
+            const isLatest = ver.id === latestVersion.id;
+
+            return (
+              <button
+                key={ver.id}
+                type="button"
+                onClick={() => setSelectedVersionId(ver.id)}
+                className={`flex flex-col text-left px-3 py-2 rounded-lg border text-xs transition-all shrink-0 min-w-[140px] ${
+                  isSelected
+                    ? 'border-primary bg-primary/10 text-primary font-medium ring-1 ring-primary'
+                    : 'border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full gap-2">
+                  <span className="font-semibold text-sm">
+                    Version {ver.version_no}
+                  </span>
+                  {isLatest && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-primary/20 text-primary font-medium">
+                      Latest
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] opacity-80 mt-1">
+                  {formatVersionDate(ver.created_at)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Read-only History Notice */}
+      {!isViewingLatest && (
+        <div className="flex items-center justify-between gap-3 p-3.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-sm">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-600 shrink-0" />
+            <span>
+              You are viewing <strong>Version {activeVersion.version_no}</strong>{' '}
+              in read-only mode.
             </span>
           </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRetryReview}
-            disabled={isRetryingReview}
-            className="shrink-0 border-amber-400 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900 gap-1.5"
+            onClick={() => setSelectedVersionId(latestVersion.id)}
+            className="text-xs border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900"
           >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${isRetryingReview ? 'animate-spin' : ''}`}
-            />
-            <span>{isRetryingReview ? 'Checking...' : 'Try again'}</span>
+            Switch to Latest (v{latestVersion.version_no})
           </Button>
         </div>
       )}
 
-      {/* Notification banners */}
-      {saveVersionMessage && (
-        <div className="mb-6 p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-sm flex items-center gap-2">
+      {/* AI Unavailable Banner */}
+      {aiStatus === 'unavailable' && (
+        <div
+          role="alert"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 text-amber-900 dark:text-amber-200 shadow-sm"
+        >
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="text-sm font-medium">
+              The AI reviewer is unavailable right now, only basic checks ran.
+              You can try again.
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRecheck}
+            disabled={isRechecking}
+            className="shrink-0 border-amber-400 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900 gap-1.5"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isRechecking ? 'animate-spin' : ''}`}
+            />
+            <span>{isRechecking ? 'Re-checking...' : 'Try again'}</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Notifications */}
+      {successMessage && (
+        <div className="p-3.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-sm flex items-center gap-2">
           <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>{saveVersionMessage}</span>
+          <span>{successMessage}</span>
         </div>
       )}
 
       {actionError && (
         <div
           role="alert"
-          className="mb-6 p-3 rounded-md bg-destructive/15 border border-destructive/30 text-destructive text-sm"
+          className="p-3.5 rounded-md bg-destructive/15 border border-destructive/30 text-destructive text-sm"
         >
           {actionError}
         </div>
       )}
 
-      {/* Two-column layout: Left Content with Highlights / Right Findings */}
+      {/* Two-column layout: Left (Highlighted View + Editable Textarea) / Right (Findings) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Side: Highlighted Content */}
-        <div className="lg:col-span-6 bg-card border border-border rounded-xl p-6 shadow-sm sticky top-6">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
-            <div>
-              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                <FileCheck2 className="h-4 w-4 text-primary" />
-                <span>Working Copy</span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Issues are tagged with #{' '}&lt;number&gt; matching the finding
-                cards.
-              </p>
+        {/* Left Side: Highlighted Content & Editable Working Copy */}
+        <div className="lg:col-span-6 space-y-6">
+          {/* 1. Highlighted View */}
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-border">
+              <div>
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <FileCheck2 className="h-4 w-4 text-primary" />
+                  <span>Highlighted Content</span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Issues are tagged with #{' '}&lt;number&gt; matching the
+                  findings on the right.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-muted-foreground">
+                {contentToHighlight.length.toLocaleString()} chars
+              </span>
             </div>
-            <span className="text-xs font-mono text-muted-foreground">
-              {workingText.length.toLocaleString()} characters
-            </span>
+
+            <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap text-foreground bg-muted/20 p-4 rounded-lg border border-border min-h-[220px] max-h-[420px] overflow-y-auto">
+              {renderedHighlightedContent}
+            </div>
           </div>
 
-          <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap text-foreground bg-muted/20 p-4 rounded-lg border border-border min-h-[360px] max-h-[680px] overflow-y-auto">
-            {renderedContent}
+          {/* 2. Working copy editable text area under highlighted view */}
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <label
+                htmlFor="working-copy-textarea"
+                className="text-sm font-semibold text-foreground flex items-center gap-2"
+              >
+                <Edit3 className="h-4 w-4 text-primary" />
+                <span>
+                  {isViewingLatest
+                    ? 'Working Copy (Editable)'
+                    : `Version ${activeVersion.version_no} Text (Read-Only)`}
+                </span>
+              </label>
+              <span
+                className={`text-xs font-mono ${
+                  workingText.length > 10000
+                    ? 'text-destructive font-bold'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                {workingText.length.toLocaleString()} / 10,000 characters
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              {isViewingLatest
+                ? 'Direct edits or accepted suggestions update this draft. Click "Re-check" above to create a new version and re-scan.'
+                : `This version is historical and read-only. Switch to Version ${latestVersion.version_no} to edit.`}
+            </p>
+
+            <textarea
+              id="working-copy-textarea"
+              rows={10}
+              value={isViewingLatest ? workingText : activeVersion.content}
+              onChange={(e) => {
+                if (isViewingLatest) {
+                  setWorkingText(e.target.value);
+                }
+              }}
+              readOnly={!isViewingLatest}
+              disabled={!isViewingLatest}
+              className={`w-full rounded-lg border p-3 font-sans text-sm leading-relaxed text-foreground bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-input disabled:cursor-not-allowed disabled:bg-muted/40 transition-colors ${
+                workingText.length > 10000
+                  ? 'border-destructive focus:ring-destructive'
+                  : 'border-input'
+              }`}
+              placeholder="Enter your content here..."
+            />
           </div>
         </div>
 
@@ -566,13 +835,13 @@ export function SubmissionReviewClient({
                 Review Findings
               </h2>
               <p className="text-xs text-muted-foreground">
-                Sorted by severity (high first). Total: {findings.length}{' '}
+                Sorted by severity (high first). Total: {displayedFindings.length}{' '}
                 {pendingCount > 0 && `(${pendingCount} pending)`}
               </p>
             </div>
           </div>
 
-          {findings.length === 0 ? (
+          {displayedFindings.length === 0 ? (
             <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
               <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
               <h3 className="text-base font-semibold text-foreground">
@@ -599,85 +868,84 @@ export function SubmissionReviewClient({
                   className={`bg-card border rounded-xl p-5 shadow-sm transition-all space-y-3.5 ${
                     finding.decision === 'accepted'
                       ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/20'
+                      : finding.decision === 'rejected'
+                      ? 'border-muted bg-muted/20 opacity-75'
                       : finding.decision === 'edited'
-                        ? 'border-blue-300 dark:border-blue-800 bg-blue-50/20'
-                        : finding.decision === 'rejected'
-                          ? 'border-border/60 opacity-75'
-                          : 'border-border'
+                      ? 'border-blue-300 dark:border-blue-800 bg-blue-50/20'
+                      : 'border-border'
                   }`}
                 >
-                  {/* Card Header: Badge with number, severity with text, category, source, confidence */}
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  {/* Card Header: Severity Badge, Number, Category, AI badge */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white select-none">
+                      <span className="inline-flex items-center justify-center text-xs font-bold px-2 py-0.5 rounded-full bg-amber-600 text-white select-none">
                         #{finding.findingNumber}
                       </span>
 
                       {/* Severity badge with text */}
-                      {finding.severity === 'high' ? (
-                        <span className="px-2.5 py-0.5 text-xs font-semibold rounded bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300 border border-red-300 dark:border-red-800">
-                          High Severity
-                        </span>
-                      ) : finding.severity === 'medium' ? (
-                        <span className="px-2.5 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                          Medium Severity
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 text-xs font-semibold rounded bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
-                          Low Severity
-                        </span>
-                      )}
+                      <span
+                        className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                          finding.severity === 'high'
+                            ? 'bg-destructive/15 text-destructive border-destructive/30'
+                            : finding.severity === 'medium'
+                            ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                            : 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border-blue-300 dark:border-blue-700'
+                        }`}
+                      >
+                        {finding.severity} severity
+                      </span>
 
-                      <span className="text-xs uppercase font-semibold tracking-wider text-muted-foreground">
+                      <span className="text-xs font-medium text-muted-foreground capitalize">
                         {finding.category}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* AI Badge for AI findings */}
                       {finding.source === 'ai' && <AiBadge />}
-
-                      {/* Confidence (Shows Needs human judgement when < 0.6) */}
-                      {finding.confidence < 0.6 ? (
+                      {finding.decision !== 'pending' && (
                         <span
-                          title={`Confidence score: ${Math.round(finding.confidence * 100)}%`}
-                          className="text-xs font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800"
+                          className={`text-xs font-semibold px-2 py-0.5 rounded uppercase border ${
+                            finding.decision === 'accepted'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200'
+                              : finding.decision === 'edited'
+                              ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-200'
+                              : 'bg-muted text-muted-foreground border-border'
+                          }`}
                         >
-                          Needs human judgement
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {Math.round(finding.confidence * 100)}% confidence
+                          {finding.decision}
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Quoted Text */}
-                  <div className="text-xs bg-muted/40 p-2.5 rounded-md border border-border/80">
-                    <span className="font-semibold text-muted-foreground block mb-0.5">
-                      Quoted Text:
+                  <div className="p-2.5 rounded-md bg-muted/40 border border-border/60">
+                    <span className="text-[11px] font-semibold text-muted-foreground block uppercase mb-1">
+                      Quoted Text
                     </span>
-                    <span className="font-mono text-sm text-foreground bg-amber-100 dark:bg-amber-950/60 px-1 py-0.2 rounded">
-                      &quot;{finding.quoted_text}&quot;
-                    </span>
+                    <blockquote className="text-sm font-medium text-foreground italic">
+                      &ldquo;{finding.quoted_text}&rdquo;
+                    </blockquote>
                   </div>
 
                   {/* Explanation */}
                   <div>
-                    <span className="text-xs font-semibold text-muted-foreground block mb-0.5">
-                      Explanation:
+                    <span className="text-[11px] font-semibold text-muted-foreground block uppercase mb-0.5">
+                      Explanation
                     </span>
-                    <p className="text-sm text-foreground leading-relaxed">
+                    <p className="text-sm text-foreground">
                       {finding.explanation}
                     </p>
                   </div>
 
-                  {/* Cited Rule or Fact Lookup */}
-                  <div className="p-3 rounded-md bg-muted/30 border border-border text-xs space-y-1">
+                  {/* Cited Rule, Fact, or Term */}
+                  <div className="p-3 rounded-lg border border-border bg-card/60 text-xs space-y-1">
                     <div className="flex items-center gap-1.5 font-semibold text-foreground">
                       <BookOpen className="h-3.5 w-3.5 text-primary" />
-                      <span>{citation.code}: {citation.title}</span>
+                      <span>Cited: {citation.title}</span>
+                      <span className="text-muted-foreground font-mono text-[11px]">
+                        ({citation.code})
+                      </span>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
                       {citation.body}
@@ -685,176 +953,239 @@ export function SubmissionReviewClient({
                   </div>
 
                   {/* Suggestion */}
-                  {finding.suggestion && (
-                    <div className="text-xs bg-emerald-50/80 dark:bg-emerald-950/30 p-2.5 rounded-md border border-emerald-200 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-200">
-                      <span className="font-semibold text-emerald-800 dark:text-emerald-400 block mb-0.5">
-                        Suggestion:
-                      </span>
-                      <p className="text-sm font-medium">
-                        &quot;{finding.suggestion}&quot;
-                      </p>
+                  <div className="p-2.5 rounded-md bg-primary/5 border border-primary/20">
+                    <span className="text-[11px] font-semibold text-primary block uppercase mb-0.5 flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      <span>Suggestion</span>
+                    </span>
+                    <p className="text-sm text-foreground font-medium">
+                      {finding.suggestion}
+                    </p>
+                  </div>
+
+                  {/* Confidence Note */}
+                  <div className="text-xs text-muted-foreground flex items-center justify-between">
+                    <span>
+                      {finding.confidence < 0.6 ? (
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">
+                          ⚠️ Needs human judgement
+                        </span>
+                      ) : (
+                        <span>
+                          {Math.round(finding.confidence * 100)}% confidence
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Decision details if already decided */}
+                  {finding.decision === 'rejected' && (
+                    <div className="p-2 rounded bg-muted text-xs text-muted-foreground">
+                      <strong>Rejection reason:</strong>{' '}
+                      {finding.decision_note || 'No reason specified'}
                     </div>
                   )}
 
-                  {/* Decision Actions & Status */}
-                  <div className="pt-2 border-t border-border flex flex-col gap-3">
-                    {finding.decision === 'accepted' ? (
-                      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle className="h-4 w-4" />
-                        <span>Accepted suggestion applied to working copy</span>
-                      </div>
-                    ) : finding.decision === 'edited' ? (
-                      <div className="flex flex-col gap-1 text-xs text-blue-700 dark:text-blue-400">
-                        <div className="flex items-center gap-1.5 font-semibold">
-                          <Edit3 className="h-4 w-4" />
-                          <span>Custom replacement applied:</span>
-                        </div>
-                        <p className="font-mono bg-blue-100/60 dark:bg-blue-950/50 p-1.5 rounded text-foreground">
-                          &quot;{finding.edited_text}&quot;
-                        </p>
-                      </div>
-                    ) : finding.decision === 'rejected' ? (
-                      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5 font-semibold text-destructive">
-                          <XCircle className="h-4 w-4" />
-                          <span>Rejected</span>
-                        </div>
-                        <p className="italic">
-                          Reason: {finding.decision_note}
-                        </p>
-                      </div>
-                    ) : (
-                      /* Pending decision buttons */
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAccept(finding)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-semibold"
-                          >
-                            Accept
-                          </Button>
+                  {finding.decision === 'edited' && (
+                    <div className="p-2 rounded bg-blue-50 dark:bg-blue-950/40 text-xs text-blue-900 dark:text-blue-200">
+                      <strong>Custom replacement applied:</strong>{' '}
+                      &ldquo;{finding.edited_text}&rdquo;
+                    </div>
+                  )}
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setActiveEditId(
-                                activeEditId === finding.id ? null : finding.id,
-                              );
-                              setCustomEditText(
-                                finding.suggestion || finding.quoted_text,
-                              );
-                              setActiveRejectId(null);
-                            }}
-                            className="h-8 text-xs"
-                          >
-                            Edit
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setActiveRejectId(
-                                activeRejectId === finding.id
-                                  ? null
-                                  : finding.id,
-                              );
-                              setActiveEditId(null);
-                              setRejectNote('');
-                            }}
-                            className="h-8 text-xs text-destructive hover:bg-destructive/10 border-destructive/30"
-                          >
-                            Reject
-                          </Button>
-                        </div>
-
-                        {/* Inline Edit Form */}
-                        {activeEditId === finding.id && (
-                          <div className="p-3 rounded-md bg-muted/40 border border-border space-y-2 text-xs">
-                            <label
-                              htmlFor={`edit-input-${finding.id}`}
-                              className="font-semibold block text-foreground"
+                  {/* Interactive Action Controls (only on latest version) */}
+                  {isViewingLatest ? (
+                    <div className="pt-2 border-t border-border space-y-2">
+                      {/* Default buttons when not editing or rejecting */}
+                      {activeEditId !== finding.id &&
+                        activeRejectId !== finding.id && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAccept(finding)}
+                              className="text-xs gap-1 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                             >
-                              Type your replacement:
-                            </label>
-                            <input
-                              id={`edit-input-${finding.id}`}
-                              type="text"
-                              value={customEditText}
-                              onChange={(e) =>
-                                setCustomEditText(e.target.value)
-                              }
-                              className="w-full p-2 rounded border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                              placeholder="Your custom replacement words..."
-                            />
-                            <div className="flex items-center gap-2 pt-1">
-                              <Button
-                                size="sm"
-                                onClick={() => handleApplyEdit(finding)}
-                                className="h-7 text-xs"
-                              >
-                                Apply Replacement
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setActiveEditId(null)}
-                                className="h-7 text-xs"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Accept</span>
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setActiveEditId(finding.id);
+                                setCustomEditText(finding.suggestion);
+                                setActiveRejectId(null);
+                              }}
+                              className="text-xs gap-1"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              <span>Edit</span>
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setActiveRejectId(finding.id);
+                                setRejectNote('');
+                                setActiveEditId(null);
+                              }}
+                              className="text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              <span>Reject</span>
+                            </Button>
                           </div>
                         )}
 
-                        {/* Inline Reject Form */}
-                        {activeRejectId === finding.id && (
-                          <div className="p-3 rounded-md bg-muted/40 border border-border space-y-2 text-xs">
-                            <label
-                              htmlFor={`reject-note-${finding.id}`}
-                              className="font-semibold block text-foreground"
+                      {/* Inline Edit Form */}
+                      {activeEditId === finding.id && (
+                        <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+                          <label className="text-xs font-semibold text-foreground block">
+                            Type replacement for &ldquo;{finding.quoted_text}
+                            &rdquo;:
+                          </label>
+                          <input
+                            type="text"
+                            value={customEditText}
+                            onChange={(e) => setCustomEditText(e.target.value)}
+                            className="w-full text-xs p-2 rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            placeholder="Type replacement text..."
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApplyEdit(finding)}
+                              className="text-xs"
                             >
-                              Reason for rejection (required):
-                            </label>
-                            <input
-                              id={`reject-note-${finding.id}`}
-                              type="text"
-                              value={rejectNote}
-                              onChange={(e) => setRejectNote(e.target.value)}
-                              className="w-full p-2 rounded border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                              placeholder="e.g. Approved exception from legal / stylistic choice..."
-                            />
-                            <div className="flex items-center gap-2 pt-1">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleApplyReject(finding)}
-                                className="h-7 text-xs"
-                              >
-                                Confirm Rejection
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setActiveRejectId(null)}
-                                className="h-7 text-xs"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
+                              Apply Replacement
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setActiveEditId(null)}
+                              className="text-xs"
+                            >
+                              Cancel
+                            </Button>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      )}
+
+                      {/* Inline Reject Form */}
+                      {activeRejectId === finding.id && (
+                        <div className="space-y-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                          <label className="text-xs font-semibold text-foreground block">
+                            Reason for rejection (required):
+                          </label>
+                          <input
+                            type="text"
+                            value={rejectNote}
+                            onChange={(e) => setRejectNote(e.target.value)}
+                            className="w-full text-xs p-2 rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            placeholder="Why is this finding not applicable?"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleApplyReject(finding)}
+                              className="text-xs"
+                            >
+                              Confirm Rejection
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setActiveRejectId(null)}
+                              className="text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="pt-2 border-t border-border text-xs text-muted-foreground italic">
+                      Historical version findings are read-only.
+                    </div>
+                  )}
                 </div>
               );
             })
           )}
         </div>
       </div>
+
+      {/* Confirmation Warning Modal for Pending High-Severity Findings */}
+      {showHighWarningModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="warning-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md bg-card border border-amber-300 dark:border-amber-800 rounded-xl p-6 shadow-xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 shrink-0">
+                <ShieldAlert className="h-6 w-6" />
+              </div>
+              <div>
+                <h3
+                  id="warning-modal-title"
+                  className="text-lg font-semibold text-foreground"
+                >
+                  Unresolved High Severity Findings
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You have{' '}
+                  <strong className="text-destructive font-bold">
+                    {pendingHighFindings.length} high-severity issue(s)
+                  </strong>{' '}
+                  still marked as pending on this submission.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs space-y-1 border border-amber-200 dark:border-amber-900">
+              <p className="font-medium">
+                Sending for review with unresolved critical issues may cause
+                brand reviewers to request changes or reject the submission.
+              </p>
+              <p className="text-muted-foreground">
+                You can still send it anyway if you believe these findings are
+                acceptable.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHighWarningModal(false)}
+                disabled={isSending}
+              >
+                Go Back & Fix
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={executeSendForReview}
+                disabled={isSending}
+                className="gap-1.5"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>
+                  {isSending ? 'Sending...' : 'Send for Review Anyway'}
+                </span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
