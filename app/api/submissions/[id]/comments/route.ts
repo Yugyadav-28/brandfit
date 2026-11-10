@@ -88,7 +88,7 @@ export async function GET(
     }
     console.error('Unexpected error in GET /api/submissions/[id]/comments:', err);
     return NextResponse.json(
-      { error: err?.message || 'Internal server error' },
+      { error: 'Failed to load comments. Please try again.' },
       { status: 500 },
     );
   }
@@ -237,7 +237,7 @@ export async function POST(
     }
     console.error('Unexpected error in POST /api/submissions/[id]/comments:', err);
     return NextResponse.json(
-      { error: err?.message || 'Internal server error' },
+      { error: 'Failed to add comment. Please try again.' },
       { status: 500 },
     );
   }

@@ -184,7 +184,7 @@ export async function PATCH(
     }
     console.error('Unexpected error in PATCH /api/findings/[id]:', error);
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: 'Failed to update finding decision. Please try again.' },
       { status: 500 },
     );
   }

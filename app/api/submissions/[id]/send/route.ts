@@ -125,7 +125,7 @@ export async function POST(
     }
     console.error('Unexpected error in POST /api/submissions/[id]/send:', err);
     return NextResponse.json(
-      { error: err?.message || 'Internal server error' },
+      { error: 'Failed to send submission for review. Please try again.' },
       { status: 500 },
     );
   }

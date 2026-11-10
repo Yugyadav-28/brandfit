@@ -199,6 +199,7 @@ export function SubmissionReviewClient({
   const [customEditText, setCustomEditText] = useState('');
   const [activeRejectId, setActiveRejectId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+  const [processingFindingId, setProcessingFindingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -331,9 +332,10 @@ export function SubmissionReviewClient({
 
   // Handle Accept finding
   async function handleAccept(finding: FindingItem) {
-    if (!isViewingLatest) return;
+    if (!isViewingLatest || processingFindingId) return;
     setActionError(null);
     setSuccessMessage(null);
+    setProcessingFindingId(finding.id);
     try {
       const res = await fetch(`/api/findings/${finding.id}`, {
         method: 'PATCH',
@@ -359,12 +361,14 @@ export function SubmissionReviewClient({
       );
     } catch (err: any) {
       setActionError(err.message || 'Error accepting suggestion');
+    } finally {
+      setProcessingFindingId(null);
     }
   }
 
   // Handle Edit Submit
   async function handleApplyEdit(finding: FindingItem) {
-    if (!isViewingLatest) return;
+    if (!isViewingLatest || processingFindingId) return;
     setActionError(null);
     setSuccessMessage(null);
     if (!customEditText.trim()) {
@@ -372,6 +376,7 @@ export function SubmissionReviewClient({
       return;
     }
 
+    setProcessingFindingId(finding.id);
     try {
       const res = await fetch(`/api/findings/${finding.id}`, {
         method: 'PATCH',
@@ -405,12 +410,14 @@ export function SubmissionReviewClient({
       setCustomEditText('');
     } catch (err: any) {
       setActionError(err.message || 'Error updating finding');
+    } finally {
+      setProcessingFindingId(null);
     }
   }
 
   // Handle Reject Submit
   async function handleApplyReject(finding: FindingItem) {
-    if (!isViewingLatest) return;
+    if (!isViewingLatest || processingFindingId) return;
     setActionError(null);
     setSuccessMessage(null);
     if (!rejectNote.trim()) {
@@ -418,6 +425,7 @@ export function SubmissionReviewClient({
       return;
     }
 
+    setProcessingFindingId(finding.id);
     try {
       const res = await fetch(`/api/findings/${finding.id}`, {
         method: 'PATCH',
@@ -446,6 +454,8 @@ export function SubmissionReviewClient({
       setRejectNote('');
     } catch (err: any) {
       setActionError(err.message || 'Error rejecting finding');
+    } finally {
+      setProcessingFindingId(null);
     }
   }
 
@@ -1038,10 +1048,11 @@ export function SubmissionReviewClient({
                               size="sm"
                               variant="outline"
                               onClick={() => handleAccept(finding)}
+                              disabled={processingFindingId !== null || isRechecking || isSending}
                               className="text-xs gap-1 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                             >
                               <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                              <span>Accept</span>
+                              <span>{processingFindingId === finding.id ? 'Accepting...' : 'Accept'}</span>
                             </Button>
 
                             <Button
@@ -1052,6 +1063,7 @@ export function SubmissionReviewClient({
                                 setCustomEditText(finding.suggestion);
                                 setActiveRejectId(null);
                               }}
+                              disabled={processingFindingId !== null || isRechecking || isSending}
                               className="text-xs gap-1"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
@@ -1066,6 +1078,7 @@ export function SubmissionReviewClient({
                                 setRejectNote('');
                                 setActiveEditId(null);
                               }}
+                              disabled={processingFindingId !== null || isRechecking || isSending}
                               className="text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
                             >
                               <XCircle className="h-3.5 w-3.5" />
@@ -1085,6 +1098,7 @@ export function SubmissionReviewClient({
                             type="text"
                             value={customEditText}
                             onChange={(e) => setCustomEditText(e.target.value)}
+                            disabled={processingFindingId === finding.id}
                             className="w-full text-xs p-2 rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             placeholder="Type replacement text..."
                           />
@@ -1092,14 +1106,16 @@ export function SubmissionReviewClient({
                             <Button
                               size="sm"
                               onClick={() => handleApplyEdit(finding)}
+                              disabled={processingFindingId === finding.id || !customEditText.trim()}
                               className="text-xs"
                             >
-                              Apply Replacement
+                              {processingFindingId === finding.id ? 'Applying...' : 'Apply Replacement'}
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => setActiveEditId(null)}
+                              disabled={processingFindingId === finding.id}
                               className="text-xs"
                             >
                               Cancel
@@ -1118,6 +1134,7 @@ export function SubmissionReviewClient({
                             type="text"
                             value={rejectNote}
                             onChange={(e) => setRejectNote(e.target.value)}
+                            disabled={processingFindingId === finding.id}
                             className="w-full text-xs p-2 rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             placeholder="Why is this finding not applicable?"
                           />
@@ -1126,14 +1143,16 @@ export function SubmissionReviewClient({
                               size="sm"
                               variant="destructive"
                               onClick={() => handleApplyReject(finding)}
+                              disabled={processingFindingId === finding.id || !rejectNote.trim()}
                               className="text-xs"
                             >
-                              Confirm Rejection
+                              {processingFindingId === finding.id ? 'Rejecting...' : 'Confirm Rejection'}
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => setActiveRejectId(null)}
+                              disabled={processingFindingId === finding.id}
                               className="text-xs"
                             >
                               Cancel

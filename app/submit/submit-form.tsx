@@ -85,7 +85,9 @@ export function SubmitForm({ companies, defaultCompanyId }: SubmitFormProps) {
           method: 'POST',
         });
         const reviewData = await reviewRes.json();
-        if (reviewRes.ok && reviewData.aiStatus) {
+        if (!reviewRes.ok || reviewData.aiStatus === 'unavailable') {
+          aiStatus = 'unavailable';
+        } else if (reviewData.aiStatus) {
           aiStatus = reviewData.aiStatus;
         }
       } catch (revErr) {

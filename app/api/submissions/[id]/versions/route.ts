@@ -134,9 +134,9 @@ export async function POST(
       console.error('Error updating submission status:', updateError);
     }
 
-    // 6. Return the new versionId
+    // 6. Return the new versionId and versionNo
     return NextResponse.json(
-      { versionId: newVersion.id },
+      { versionId: newVersion.id, versionNo: nextVersionNo },
       { status: 201 },
     );
   } catch (error: any) {
@@ -151,7 +151,7 @@ export async function POST(
       error,
     );
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: 'Failed to create new version. Please try again.' },
       { status: 500 },
     );
   }

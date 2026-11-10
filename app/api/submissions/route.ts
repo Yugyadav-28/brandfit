@@ -42,6 +42,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (title.trim().length > 500) {
+      return NextResponse.json(
+        { error: 'Title must not exceed 500 characters' },
+        { status: 400 },
+      );
+    }
+
     if (content === undefined || content === null || typeof content !== 'string') {
       return NextResponse.json(
         { error: 'content is required' },
@@ -126,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
     console.error('Unexpected error in POST /api/submissions:', error);
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: 'Failed to create submission. Please try again.' },
       { status: 500 },
     );
   }

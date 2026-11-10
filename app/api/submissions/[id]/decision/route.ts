@@ -55,6 +55,13 @@ export async function POST(
       );
     }
 
+    if (note && typeof note === 'string' && note.length > 5000) {
+      return NextResponse.json(
+        { error: 'Note must not exceed 5,000 characters' },
+        { status: 400 },
+      );
+    }
+
     const admin = createAdminClient();
 
     // 1. Fetch submission
@@ -170,7 +177,7 @@ export async function POST(
     }
     console.error('Unexpected error in POST /api/submissions/[id]/decision:', err);
     return NextResponse.json(
-      { error: err?.message || 'Internal server error' },
+      { error: 'Failed to record decision. Please try again.' },
       { status: 500 },
     );
   }
