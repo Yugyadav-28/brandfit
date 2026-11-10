@@ -84,6 +84,8 @@ export async function aiReview(
     return { findings: [], status: 'unavailable' };
   }
 
+  const activeModel = model;
+
   const validCodes = new Set<string>();
   for (const r of rules) {
     const code = r.code || (r as Record<string, unknown>).rule_code;
@@ -152,107 +154,141 @@ Content to review:
 ${text}
 </content>`;
 
-  let lastError: unknown = null;
+  const masterAbort = new AbortController();
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const abortController = new AbortController();
-    const timeoutHandle = setTimeout(() => {
-      abortController.abort();
-    }, 20_000);
+  async function executeAttempts(): Promise<AiReviewResult> {
+    let lastError: unknown = null;
+    const deadline = Date.now() + 20_000;
 
-    try {
-      const ai = new GoogleGenAI({
-        apiKey,
-        httpOptions: { timeout: 20_000 },
-      });
-
-      const response = await ai.models.generateContent({
-        model,
-        contents: promptContent,
-        config: {
-          systemInstruction,
-          temperature: 0.1,
-          responseMimeType: 'application/json',
-          abortSignal: abortController.signal,
-        },
-      });
-
-      clearTimeout(timeoutHandle);
-      const rawText = response.text;
-
-      if (!rawText) {
-        return { findings: [], status: 'ok' };
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 1000) {
+        break;
       }
 
-      const cleaned = cleanJson(rawText);
-      let parsed: unknown;
+      const attemptTimeout = Math.min(remainingMs, 10_000);
+      const attemptAbort = new AbortController();
+
+      const onMasterAbort = () => attemptAbort.abort();
+      masterAbort.signal.addEventListener('abort', onMasterAbort);
+
+      const timeoutHandle = setTimeout(() => {
+        attemptAbort.abort();
+      }, attemptTimeout);
+
       try {
-        parsed = JSON.parse(cleaned);
-      } catch {
-        throw new Error('Model did not return valid JSON');
-      }
-
-      const rawList =
-        parsed &&
-        typeof parsed === 'object' &&
-        'findings' in parsed &&
-        Array.isArray((parsed as Record<string, unknown>).findings)
-          ? ((parsed as Record<string, unknown>).findings as unknown[])
-          : Array.isArray(parsed)
-            ? parsed
-            : [];
-
-      const findings: Finding[] = [];
-
-      for (const item of rawList) {
-        const parsedItem = RawFindingSchema.safeParse(item);
-        if (!parsedItem.success) {
-          continue;
-        }
-
-        const finding = parsedItem.data;
-        const code = finding.rule_code.trim();
-
-        // Drop any finding whose rule_code is not one of the supplied rule or fact codes
-        if (!validCodes.has(code)) {
-          continue;
-        }
-
-        // Drop any finding whose quoted_text does not appear exactly in the content
-        if (!finding.quoted_text || !text.includes(finding.quoted_text)) {
-          continue;
-        }
-
-        // Clamp confidence between 0 and 1
-        const confidence = Math.max(0, Math.min(1, finding.confidence));
-
-        // Set source to 'ai'
-        findings.push({
-          category: finding.category,
-          severity: finding.severity,
-          quoted_text: finding.quoted_text,
-          explanation: finding.explanation,
-          rule_code: code,
-          suggestion: finding.suggestion,
-          confidence,
-          source: 'ai',
+        const ai = new GoogleGenAI({
+          apiKey,
+          httpOptions: { timeout: attemptTimeout },
         });
-      }
 
-      return { findings, status: 'ok' };
-    } catch (err) {
-      clearTimeout(timeoutHandle);
-      lastError = err;
-      if (attempt === 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const response = await ai.models.generateContent({
+          model: activeModel,
+          contents: promptContent,
+          config: {
+            systemInstruction,
+            temperature: 0.1,
+            responseMimeType: 'application/json',
+            abortSignal: attemptAbort.signal,
+          },
+        });
+
+        clearTimeout(timeoutHandle);
+        masterAbort.signal.removeEventListener('abort', onMasterAbort);
+        const rawText = response.text;
+
+        if (!rawText) {
+          return { findings: [], status: 'ok' };
+        }
+
+        const cleaned = cleanJson(rawText);
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {
+          throw new Error('Model did not return valid JSON');
+        }
+
+        const rawList =
+          parsed &&
+          typeof parsed === 'object' &&
+          'findings' in parsed &&
+          Array.isArray((parsed as Record<string, unknown>).findings)
+            ? ((parsed as Record<string, unknown>).findings as unknown[])
+            : Array.isArray(parsed)
+              ? parsed
+              : [];
+
+        const findings: Finding[] = [];
+
+        for (const item of rawList) {
+          const parsedItem = RawFindingSchema.safeParse(item);
+          if (!parsedItem.success) {
+            continue;
+          }
+
+          const finding = parsedItem.data;
+          const code = finding.rule_code.trim();
+
+          // Drop any finding whose rule_code is not one of the supplied rule or fact codes
+          if (!validCodes.has(code)) {
+            continue;
+          }
+
+          // Drop any finding whose quoted_text does not appear exactly in the content
+          if (!finding.quoted_text || !text.includes(finding.quoted_text)) {
+            continue;
+          }
+
+          // Clamp confidence between 0 and 1
+          const confidence = Math.max(0, Math.min(1, finding.confidence));
+
+          // Set source to 'ai'
+          findings.push({
+            category: finding.category,
+            severity: finding.severity,
+            quoted_text: finding.quoted_text,
+            explanation: finding.explanation,
+            rule_code: code,
+            suggestion: finding.suggestion,
+            confidence,
+            source: 'ai',
+          });
+        }
+
+        return { findings, status: 'ok' };
+      } catch (err) {
+        clearTimeout(timeoutHandle);
+        masterAbort.signal.removeEventListener('abort', onMasterAbort);
+        lastError = err;
+        if (attempt === 1 && deadline - Date.now() > 2000) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        }
       }
     }
+
+    const rawErrMsg =
+      lastError instanceof Error ? lastError.message : String(lastError);
+    console.error(
+      `aiReview unavailable: ${sanitizeMessage(rawErrMsg, apiKey)}`,
+    );
+    return { findings: [], status: 'unavailable' };
   }
 
-  const rawErrMsg =
-    lastError instanceof Error ? lastError.message : String(lastError);
-  console.error(
-    `aiReview unavailable: ${sanitizeMessage(rawErrMsg, apiKey)}`,
-  );
-  return { findings: [], status: 'unavailable' };
+  // Enforce absolute 20 second hard timeout
+  let masterTimeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<AiReviewResult>((resolve) => {
+    masterTimeoutId = setTimeout(() => {
+      masterAbort.abort();
+      console.error('aiReview unavailable: call exceeded 20 second timeout');
+      resolve({ findings: [], status: 'unavailable' });
+    }, 20_000);
+  });
+
+  try {
+    const result = await Promise.race([executeAttempts(), timeoutPromise]);
+    return result;
+  } finally {
+    clearTimeout(masterTimeoutId!);
+  }
 }

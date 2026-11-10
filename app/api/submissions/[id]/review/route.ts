@@ -3,6 +3,7 @@ import { requireUser, requireMember } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runReview } from '@/lib/review/runReview';
 import { logAudit } from '@/lib/audit';
+import { checkReviewRateLimit } from '@/lib/review/rateLimit';
 
 export async function POST(
   request: NextRequest,
@@ -43,6 +44,24 @@ export async function POST(
 
     // 2. Auth checks: caller must be member of the submission's company
     const user = await requireUser();
+
+    // 2b. Rate limit: 10 review runs per user per 10 minutes
+    const rateLimit = checkReviewRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            'You have reached the limit of 10 review scans per 10 minutes. Please wait a few moments before trying again.',
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.retryAfterSeconds || 60),
+          },
+        },
+      );
+    }
+
     const { role } = await requireMember(submission.company_id);
 
     // Only the author, a reviewer or an employer
@@ -149,7 +168,7 @@ export async function POST(
     }
     console.error('Unexpected error in POST /api/submissions/[id]/review:', error);
     return NextResponse.json(
-      { error: error?.message || 'Internal Server Error' },
+      { error: 'An error occurred while reviewing this submission. Please try again.' },
       { status: 500 },
     );
   }
