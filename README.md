@@ -1,110 +1,209 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# BrandFit
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+BrandFit is an AI-assisted brand governance platform for marketing and content teams.
+Organizations set custom brand rules, approved factual claims, and preferred vocabulary.
+Writers draft copy and receive instant AI feedback citing specific brand rules and exact text quotes.
+Creators retain full agency to accept, edit, or reject suggestions before submitting for approval.
+Designated reviewers inspect submissions and audit trails to maintain consistent brand integrity.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+---
 
-## Features
+## Live Demo
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- **Production URL**: [https://brandfit.vercel.app](https://brandfit.vercel.app)
 
-## Demo
+---
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+## Demo Accounts
 
-## Deploy to Vercel
+All demo accounts share the same password and are pre-joined to the demo company (**FreshBrew Coffee**):
 
-Vercel deployment will guide you through creating a Supabase account and project.
-
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
-
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
-
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
-
-## Clone and run locally
-
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
-
-2. Create a Next.js app using the Supabase Starter template npx command
-
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
-
-3. Use `cd` to change into the app's directory
-
-   ```bash
-   cd with-supabase-app
-   ```
-
-4. Rename `.env.example` to `.env.local` and update the following:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-```
+| Role | Email | Password | Join Code |
+| :--- | :--- | :--- | :--- |
+| **Employer** | `employer@demo.com` | `demo1234` | `DEMO01` |
+| **Reviewer** | `reviewer@demo.com` | `demo1234` | `DEMO01` |
+| **Employee** | `employee@demo.com` | `demo1234` | `DEMO01` |
 
 > [!NOTE]
-> This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-> Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-> See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+> Demo account constants are configured in [`lib/demo.ts`](lib/demo.ts).
 
-Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+---
 
-5. You can now run the Next.js local development server:
+## How to Run Locally
 
+Follow these six steps to run BrandFit on your local machine:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Yugyadav-28/brandfit.git
+   cd brandfit
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Set up Supabase**:
+   Create a project on [Supabase](https://database.new) and run the database schema migrations to create the required tables (`companies`, `memberships`, `rules`, `facts`, `terms`, `submissions`, `versions`, `findings`, `comments`, `audit_log`) with Row Level Security enabled.
+
+4. **Configure environment variables**:
+   Create a `.env.local` file in the root directory and add the required environment variables (see list below).
+
+5. **Start the development server**:
    ```bash
    npm run dev
    ```
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+6. **Open the application**:
+   Open [http://localhost:3000](http://localhost:3000) in your browser. Sign in using one of the demo credentials or create a new account.
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+---
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+## Environment Variables
 
-## Feedback and issues
+Only the following environment variable names are required:
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
 
-## More Supabase examples
+*(Do not commit secret keys to version control. Set client keys with `NEXT_PUBLIC_` and server keys without prefix.)*
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+---
+
+## Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org) (App Router, Server Actions, Route Handlers, Partial Prerendering)
+- **Language**: [TypeScript](https://www.typescriptlang.org) (Strict mode)
+- **Styling & UI**: [Tailwind CSS](https://tailwindcss.com), [Radix UI](https://www.radix-ui.com), [Lucide React](https://lucide.dev)
+- **Database & Auth**: [Supabase](https://supabase.com) (PostgreSQL database, Auth, cookie sessions via `@supabase/ssr`, Admin client via `SUPABASE_SECRET_KEY`)
+- **AI Engine**: [Google Gemini API](https://ai.google.dev) via official `@google/genai` SDK
+- **Validation**: [Zod](https://zod.dev)
+
+---
+
+## Folder Map
+
+```
+brandfit/
+├── app/                           # Next.js App Router routes & layouts
+│   ├── actions/                   # Server Actions (company, guidelines, members)
+│   ├── api/                       # REST API Route Handlers
+│   │   ├── findings/[id]/         # PATCH finding decisions
+│   │   └── submissions/           # Submission creation, versions, review runs, decisions, comments
+│   ├── auth/                      # Authentication routes (login, sign-up, confirm, post-login)
+│   ├── company/                   # Company workspace management
+│   │   ├── audit/                 # Audit trail browser (Reviewer & Employer)
+│   │   ├── guidelines/            # Brand Rules, Facts, and Terms manager (Employer)
+│   │   ├── members/               # Team member management & join codes (Employer)
+│   │   └── new/                   # Create company flow
+│   ├── dashboard/                 # Analytics, waiting review queue, team activity
+│   ├── disclosure/                # AI transparency policy & model disclosure
+│   ├── home-start/                # Post-login routing for users without a company
+│   ├── join/                      # Join company with 6-character code
+│   ├── my/                        # Employee submissions list & status tracking
+│   ├── review/                    # Reviewer approval queue & submission inspector
+│   ├── submit/                    # Content submission & AI review triage interface
+│   ├── layout.tsx                 # Root layout with Nav and Footer
+│   └── page.tsx                   # Public landing page with demo steps
+├── components/                    # Shared React UI components
+│   ├── ui/                        # Radix + Tailwind primitive components (Button, Input, Card, etc.)
+│   ├── ai-badge.tsx               # Standardized AI suggestion badge
+│   ├── nav.tsx                    # Server-side navigation resolver
+│   └── nav-client.tsx             # Responsive mobile navbar with active page indicator
+├── docs/                          # Technical specifications & documentation
+│   ├── ARCHITECTURE.md            # System architecture, pipeline, database, and decisions
+│   ├── CONTRACT.md                # Shared agent API and ownership contracts
+│   └── PRIVACY_SECURITY.md        # Data isolation, security boundaries, and oversight
+├── lib/                           # Core utilities and business logic
+│   ├── review/                    # Review engine (ruleChecks, aiReview, rateLimit, runReview)
+│   ├── supabase/                  # Supabase clients (browser, server, admin)
+│   ├── audit.ts                   # Immutable audit logging helper
+│   ├── auth.ts                    # Authentication & role-check helpers (requireUser, requireMember)
+│   ├── demo.ts                    # Demo account constants
+│   └── types.ts                   # Domain types (Role, Finding, SubmissionStatus, AuditAction)
+├── scripts/                       # Local testing & verification scripts
+└── seed/                          # Demo brand kits (FreshBrew Coffee sample JSON)
+```
+
+---
+
+## Roles and Workflow
+
+### User Roles
+
+1. **Employer**:
+   - Owns the company workspace.
+   - Configures brand guidelines: rules, approved facts, and vocabulary terms.
+   - Manages team members, switches roles between employee and reviewer, and regenerates join codes.
+   - Accesses dashboard analytics, the audit log, and can approve submissions.
+2. **Reviewer**:
+   - Inspects content sent for review.
+   - Approves submissions or requests changes with review notes and feedback.
+   - Inspects the full immutable audit trail.
+3. **Employee**:
+   - Joins via 6-character join code.
+   - Submits content drafts for automated compliance scanning.
+   - Reviews findings and accepts, edits, or rejects suggestions before sending for review.
+   - Tracks submission history and status updates.
+
+### End-to-End Workflow
+
+```
+[Employee/Creator]               [BrandFit Engine]                [Reviewer/Employer]
+        │                                │                                 │
+  1. Writes copy                         │                                 │
+  2. Runs Review ───────────────────────►│                                 │
+        │                        • Rule Checks (Regex)                     │
+        │                        • Gemini AI Scan                          │
+        │                        • Citation Validation                     │
+        │                        • Deduplicate & Rank                      │
+  3. Receives findings ◄─────────────────┘                                 │
+  4. Triages findings                    │                                 │
+     (Accept / Edit / Reject)            │                                 │
+  5. Sends for review ───────────────────┼────────────────────────────────►│
+        │                                │                     6. Inspects submission
+        │                                │                     7. Approves or Requests Changes
+        │◄───────────────────────────────┼─────────────────────────────────┘
+  8. If changes requested:               │
+     Edits draft (creates v2)            │
+     Re-runs check & resubmits           │
+```
+
+---
+
+## Current Status and Roadmap
+
+### What is Done (Built & Verified in Code)
+- [x] Multi-tenant workspace creation with random 6-character join codes (excluding ambiguous characters `0, O, 1, I, L`).
+- [x] Role-based authentication and navigation (`employer`, `reviewer`, `employee`).
+- [x] Brand Guidelines management (CRUD for Rules, Facts, and Terms) with one-click Sample Brand Kit import.
+- [x] Team member management (role elevation/demotion, member removal, join code regeneration).
+- [x] Hybrid review engine: local deterministic rule & terminology checks followed by Google Gemini API checks.
+- [x] Strict citation and exact-quote validation (hallucinated codes and inaccurate quotes are automatically discarded).
+- [x] Finding triage UI: creators accept, edit replacement text, or reject findings with notes.
+- [x] Multi-version content revisions (`versions` tracking).
+- [x] Review queue with approval and change request workflow including feedback notes.
+- [x] Dashboard with waiting queue, status metrics, and repeated mistakes tracker.
+- [x] Comprehensive, write-only audit trail logging all actions (`audit_log`).
+- [x] Rate limiting (in-memory sliding window: 10 scans / 10 minutes) and hard 20-second timeout protection.
+- [x] Public AI disclosure page detailing model usage, data flows, and boundaries.
+
+### What is Planned (Future Enhancements)
+- [ ] *Planned*: Direct integrations with external publishing platforms (WordPress, Webflow, LinkedIn, Ghost).
+- [ ] *Planned*: Multi-company workspace switcher in the top navigation bar.
+- [ ] *Planned*: Real-time collaborative drafting in the submission editor.
+- [ ] *Planned*: Image and visual media OCR scanning for brand color and logo compliance.
+- [ ] *Planned*: Exportable compliance reports (PDF / CSV) for enterprise audits.
+
+---
+
+## Known Limitations
+
+- **AI Model Fallibility**: The Google Gemini model can miss subtle stylistic issues or return false positives. AI suggestions are advisory and never applied automatically.
+- **Provider Free-Tier Terms**: Requests on Gemini API free tiers may be subject to provider product improvement terms. Only fictional or non-confidential content should be tested in this demo environment.
+- **Review Rate Limit**: To protect API quotas, review scans are capped at 10 requests per user per 10-minute sliding window.
+- **Single Active Company View**: Sessions currently resolve to the primary membership role. Users belonging to multiple companies default to their employer or reviewer workspace.
