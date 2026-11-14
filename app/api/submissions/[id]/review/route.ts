@@ -64,9 +64,13 @@ export async function POST(
 
     const { role } = await requireMember(submission.company_id);
 
-    // Only the author, a reviewer or an employer
+    // Only the author, a reviewer, an authorised_reviewer or an employer
     const isAuthor = submission.author_id === user.id;
-    const isAuthorizedRole = role === 'employer' || role === 'reviewer';
+    const userRole = role as string;
+    const isAuthorizedRole =
+      userRole === 'employer' ||
+      userRole === 'reviewer' ||
+      userRole === 'authorised_reviewer';
 
     if (!isAuthor && !isAuthorizedRole) {
       return NextResponse.json(
