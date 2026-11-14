@@ -80,6 +80,7 @@ export function SubmitForm({ companies, defaultCompanyId }: SubmitFormProps) {
       setStatusMessage('Checking your content...');
 
       let aiStatus = 'ok';
+      let retrievalParam = '';
       try {
         const reviewRes = await fetch(`/api/submissions/${submissionId}/review`, {
           method: 'POST',
@@ -90,13 +91,16 @@ export function SubmitForm({ companies, defaultCompanyId }: SubmitFormProps) {
         } else if (reviewData.aiStatus) {
           aiStatus = reviewData.aiStatus;
         }
+        if (reviewData.retrieval) {
+          retrievalParam = `&retrieval=${encodeURIComponent(JSON.stringify(reviewData.retrieval))}`;
+        }
       } catch (revErr) {
         console.error('Review check encountered an issue:', revErr);
         aiStatus = 'unavailable';
       }
 
       // 3. Redirect to /submit/[id]
-      const targetUrl = `/submit/${submissionId}?aiStatus=${aiStatus}`;
+      const targetUrl = `/submit/${submissionId}?aiStatus=${aiStatus}${retrievalParam}`;
 
       router.push(targetUrl);
     } catch (err: any) {
