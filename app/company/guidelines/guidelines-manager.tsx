@@ -135,12 +135,34 @@ export function GuidelinesManager({
     setRuleFormError(null);
     const formData = new FormData(e.currentTarget);
 
+    const rawCode = (formData.get("code") as string) || "";
+    const code = rawCode.trim().toUpperCase();
+
+    if (!code) {
+      setRuleFormError("Please enter a rule code.");
+      return;
+    }
+
+    // Check for duplicates case-insensitively
+    const isDuplicate = initialRules.some(
+      (r) =>
+        r.code.trim().toUpperCase() === code &&
+        r.id !== editingRule?.id,
+    );
+
+    if (isDuplicate) {
+      setRuleFormError(
+        `Rule code "${code}" is already in use. Please choose a different code.`,
+      );
+      return;
+    }
+
     const payload = {
       id: editingRule?.id,
-      code: (formData.get("code") as string) || "",
-      category: (formData.get("category") as string) || "",
-      title: (formData.get("title") as string) || "",
-      body: (formData.get("body") as string) || "",
+      code,
+      category: ((formData.get("category") as string) || "").trim(),
+      title: ((formData.get("title") as string) || "").trim(),
+      body: ((formData.get("body") as string) || "").trim(),
     };
 
     startTransition(async () => {
@@ -167,11 +189,33 @@ export function GuidelinesManager({
     setFactFormError(null);
     const formData = new FormData(e.currentTarget);
 
+    const rawCode = (formData.get("code") as string) || "";
+    const code = rawCode.trim().toUpperCase();
+
+    if (!code) {
+      setFactFormError("Please enter a fact code.");
+      return;
+    }
+
+    // Check for duplicates case-insensitively
+    const isDuplicate = initialFacts.some(
+      (f) =>
+        f.code.trim().toUpperCase() === code &&
+        f.id !== editingFact?.id,
+    );
+
+    if (isDuplicate) {
+      setFactFormError(
+        `Fact code "${code}" is already in use. Please choose a different code.`,
+      );
+      return;
+    }
+
     const payload = {
       id: editingFact?.id,
-      code: (formData.get("code") as string) || "",
-      statement: (formData.get("statement") as string) || "",
-      source: (formData.get("source") as string) || "",
+      code,
+      statement: ((formData.get("statement") as string) || "").trim(),
+      source: ((formData.get("source") as string) || "").trim(),
       updated_on: (formData.get("updated_on") as string) || undefined,
     };
 
@@ -474,7 +518,7 @@ export function GuidelinesManager({
                   {initialRules.map((rule) => (
                     <tr key={rule.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-6 py-4 font-mono font-bold text-foreground">
-                        {rule.code}
+                        {rule.code.toUpperCase()}
                       </td>
                       <td className="px-6 py-4">
                         <span className="capitalize px-2 py-0.5 rounded text-xs font-medium bg-muted border">
@@ -497,7 +541,7 @@ export function GuidelinesManager({
                               setRuleModalOpen(true);
                             }}
                             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
-                            aria-label={`Edit rule ${rule.code}`}
+                            aria-label={`Edit rule ${rule.code.toUpperCase()}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -507,11 +551,11 @@ export function GuidelinesManager({
                               setDeleteConfirm({
                                 type: "rule",
                                 id: rule.id,
-                                identifier: rule.code,
+                                identifier: rule.code.toUpperCase(),
                               })
                             }
                             className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition"
-                            aria-label={`Delete rule ${rule.code}`}
+                            aria-label={`Delete rule ${rule.code.toUpperCase()}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -590,7 +634,7 @@ export function GuidelinesManager({
                   {initialFacts.map((fact) => (
                     <tr key={fact.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-6 py-4 font-mono font-bold text-foreground">
-                        {fact.code}
+                        {fact.code.toUpperCase()}
                       </td>
                       <td className="px-6 py-4 text-foreground font-medium">
                         {fact.statement}
@@ -613,7 +657,7 @@ export function GuidelinesManager({
                               setFactModalOpen(true);
                             }}
                             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"
-                            aria-label={`Edit fact ${fact.code}`}
+                            aria-label={`Edit fact ${fact.code.toUpperCase()}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -623,11 +667,11 @@ export function GuidelinesManager({
                               setDeleteConfirm({
                                 type: "fact",
                                 id: fact.id,
-                                identifier: fact.code,
+                                identifier: fact.code.toUpperCase(),
                               })
                             }
                             className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition"
-                            aria-label={`Delete fact ${fact.code}`}
+                            aria-label={`Delete fact ${fact.code.toUpperCase()}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -760,7 +804,7 @@ export function GuidelinesManager({
           <div className="bg-card text-card-foreground border rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h2 className="text-xl font-bold">
-                {editingRule ? `Edit Rule: ${editingRule.code}` : "Add New Rule"}
+                {editingRule ? `Edit Rule: ${editingRule.code.toUpperCase()}` : "Add New Rule"}
               </h2>
               <button
                 type="button"
@@ -788,7 +832,7 @@ export function GuidelinesManager({
                   <Input
                     id="rule-code"
                     name="code"
-                    defaultValue={editingRule?.code || ""}
+                    defaultValue={editingRule?.code ? editingRule.code.toUpperCase() : ""}
                     placeholder="e.g. T-1"
                     required
                     className="font-mono uppercase"
@@ -864,7 +908,7 @@ export function GuidelinesManager({
           <div className="bg-card text-card-foreground border rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h2 className="text-xl font-bold">
-                {editingFact ? `Edit Fact: ${editingFact.code}` : "Add New Fact"}
+                {editingFact ? `Edit Fact: ${editingFact.code.toUpperCase()}` : "Add New Fact"}
               </h2>
               <button
                 type="button"
@@ -892,7 +936,7 @@ export function GuidelinesManager({
                   <Input
                     id="fact-code"
                     name="code"
-                    defaultValue={editingFact?.code || ""}
+                    defaultValue={editingFact?.code ? editingFact.code.toUpperCase() : ""}
                     placeholder="e.g. F-1"
                     required
                     className="font-mono uppercase"
