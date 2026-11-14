@@ -44,7 +44,7 @@ const RawFindingSchema = z.object({
   severity: FindingSeveritySchema,
   quoted_text: z.string(),
   explanation: z.string(),
-  rule_code: z.string(),
+  rule_code: z.string().transform((v) => v.trim().toUpperCase()),
   suggestion: z.string(),
   confidence: z.number().or(
     z.string().transform((v) => {
@@ -69,6 +69,61 @@ function sanitizeMessage(msg: string, secret?: string): string {
   return msg.split(secret).join('[REDACTED]');
 }
 
+export function isCitationValid(
+  ruleCode: string,
+  rules: RuleItem[] = [],
+  facts: FactItem[] = [],
+): boolean {
+  if (!ruleCode || typeof ruleCode !== 'string') return false;
+  const upper = ruleCode.trim().toUpperCase();
+  return (
+    rules.some(
+      (r) =>
+        ((r.code || (r as Record<string, unknown>).rule_code) ?? '')
+          .toString()
+          .trim()
+          .toUpperCase() === upper,
+    ) ||
+    facts.some(
+      (f) =>
+        ((f.code || (f as Record<string, unknown>).fact_code) ?? '')
+          .toString()
+          .trim()
+          .toUpperCase() === upper,
+    )
+  );
+}
+
+export function findRuleOrFactByCode(
+  ruleCode: string,
+  rules: RuleItem[] = [],
+  facts: FactItem[] = [],
+): { type: 'rule' | 'fact'; item: RuleItem | FactItem; code: string } | null {
+  if (!ruleCode || typeof ruleCode !== 'string') return null;
+  const upper = ruleCode.trim().toUpperCase();
+  const rule = rules.find(
+    (r) =>
+      ((r.code || (r as Record<string, unknown>).rule_code) ?? '')
+        .toString()
+        .trim()
+        .toUpperCase() === upper,
+  );
+  if (rule) {
+    return { type: 'rule', item: rule, code: upper };
+  }
+  const fact = facts.find(
+    (f) =>
+      ((f.code || (f as Record<string, unknown>).fact_code) ?? '')
+        .toString()
+        .trim()
+        .toUpperCase() === upper,
+  );
+  if (fact) {
+    return { type: 'fact', item: fact, code: upper };
+  }
+  return null;
+}
+
 export async function aiReview(
   text: string,
   { rules = [], facts = [] }: AiReviewOptions = {},
@@ -91,13 +146,13 @@ export async function aiReview(
   for (const r of rules) {
     const code = r.code || (r as Record<string, unknown>).rule_code;
     if (code && typeof code === 'string') {
-      validCodes.add(code.trim());
+      validCodes.add(code.trim().toUpperCase());
     }
   }
   for (const f of facts) {
     const code = f.code || (f as Record<string, unknown>).fact_code;
     if (code && typeof code === 'string') {
-      validCodes.add(code.trim());
+      validCodes.add(code.trim().toUpperCase());
     }
   }
 
@@ -125,7 +180,10 @@ Answer only with JSON in the required shape:
 
   const rulesList = rules
     .map((r) => {
-      const code = r.code || (r as Record<string, unknown>).rule_code || '';
+      const code = (r.code || (r as Record<string, unknown>).rule_code || '')
+        .toString()
+        .trim()
+        .toUpperCase();
       const category = r.category || '';
       const title = r.title || '';
       const body = r.body || (r as Record<string, unknown>).description || '';
@@ -135,7 +193,10 @@ Answer only with JSON in the required shape:
 
   const factsList = facts
     .map((f) => {
-      const code = f.code || (f as Record<string, unknown>).fact_code || '';
+      const code = (f.code || (f as Record<string, unknown>).fact_code || '')
+        .toString()
+        .trim()
+        .toUpperCase();
       const statement =
         f.statement ||
         (f as Record<string, unknown>).body ||
@@ -230,9 +291,9 @@ ${text}
           }
 
           const finding = parsedItem.data;
-          const code = finding.rule_code.trim();
+          const code = finding.rule_code.trim().toUpperCase();
 
-          // Drop any finding whose rule_code is not one of the supplied rule or fact codes
+          // Drop any finding whose rule_code is not one of the supplied rule or fact codes (case-insensitive)
           if (!validCodes.has(code)) {
             continue;
           }

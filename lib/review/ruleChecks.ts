@@ -98,9 +98,15 @@ export function ruleChecks(
 
   // 2. Absolute claims: phrases best, world's best, number one, #1, guaranteed, 100 percent, 100%, never fails, miracle
   const claimsRule = rules.find(
-    (r) => (r.category ?? '').toLowerCase() === 'claims',
+    (r) =>
+      (r.category ?? '').toLowerCase() === 'claims' ||
+      ((r.code || r.rule_code) ?? '').toString().trim().toUpperCase() === 'C-1' ||
+      ((r.code || r.rule_code) ?? '').toString().trim().toUpperCase() === 'CLAIMS',
   );
-  const claimsRuleCode = claimsRule?.code || claimsRule?.rule_code || 'CLAIMS';
+  const claimsRuleCode = (claimsRule?.code || claimsRule?.rule_code || 'CLAIMS')
+    .toString()
+    .trim()
+    .toUpperCase();
 
   const claimSuggestion = 'Remove this claim, or support it with an approved fact.';
   const claimPatterns: Array<{ pattern: RegExp; suggestion: string }> = [
@@ -149,12 +155,20 @@ export function ruleChecks(
   // 3. Shouting: words of 4+ letters in ALL CAPS, or more than one exclamation mark
   const shoutingRule = rules.find(
     (r) =>
-      (r.category ?? '').toLowerCase() === 'tone' &&
-      ((r.title ?? '').toLowerCase().includes('shout') ||
-        (r.description ?? '').toLowerCase().includes('shout')),
+      ((r.category ?? '').toLowerCase() === 'tone' &&
+        ((r.title ?? '').toLowerCase().includes('shout') ||
+          (r.description ?? '').toLowerCase().includes('shout'))) ||
+      ((r.code || r.rule_code) ?? '').toString().trim().toUpperCase() === 'T-1' ||
+      ((r.code || r.rule_code) ?? '').toString().trim().toUpperCase() === 'TONE',
   );
-  const shoutingRuleCode =
-    shoutingRule?.code || shoutingRule?.rule_code || 'TONE';
+  const shoutingRuleCode = (
+    shoutingRule?.code ||
+    shoutingRule?.rule_code ||
+    'TONE'
+  )
+    .toString()
+    .trim()
+    .toUpperCase();
 
   // Words of 4 or more letters in ALL CAPS
   const allCapsRegex = /\b[A-Z]{4,}\b/g;
@@ -202,11 +216,13 @@ export function ruleChecks(
     if (!text.includes(finding.quoted_text)) {
       continue;
     }
-    const key = `${finding.quoted_text}::${finding.rule_code}`;
+    const upperCode = (finding.rule_code || '').trim().toUpperCase();
+    const key = `${finding.quoted_text}::${upperCode}`;
     if (!seen.has(key)) {
       seen.add(key);
       uniqueFindings.push({
         ...finding,
+        rule_code: upperCode,
         suggestion: safeSuggestion(finding.suggestion),
       });
     }
