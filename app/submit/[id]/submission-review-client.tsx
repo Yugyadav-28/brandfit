@@ -102,6 +102,9 @@ export interface SubmissionReviewClientProps {
   facts: FactItem[];
   terms: TermItem[];
   initialAiStatus: 'ok' | 'unavailable' | 'unknown';
+  initialRetrieval?: RetrievalStats | null;
+  reviewResult?: ReviewResultData | null;
+  retrieval?: RetrievalStats | null;
   reviewerFeedbackNote?: string | null;
   escalationReason?: string | null;
   escalationResolutionNote?: string | null;
@@ -194,6 +197,9 @@ export function SubmissionReviewClient({
   facts,
   terms,
   initialAiStatus,
+  initialRetrieval,
+  reviewResult,
+  retrieval,
   reviewerFeedbackNote,
   escalationReason,
   escalationResolutionNote,
