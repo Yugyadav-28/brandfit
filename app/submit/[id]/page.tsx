@@ -80,13 +80,20 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
     console.error('Error fetching findings for versions:', findError);
   }
 
-  // 6. Load company rules, facts, terms, and latest approval decision
-  const [rulesRes, factsRes, termsRes, approvalRes] = await Promise.all([
+  // 6. Load company rules, facts, terms, latest approval decision, and escalation
+  const [rulesRes, factsRes, termsRes, approvalRes, escalationRes] = await Promise.all([
     admin.from('rules').select('*').eq('company_id', submission.company_id),
     admin.from('facts').select('*').eq('company_id', submission.company_id),
     admin.from('terms').select('*').eq('company_id', submission.company_id),
     admin
       .from('approvals')
+      .select('*')
+      .eq('submission_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from('escalations')
       .select('*')
       .eq('submission_id', id)
       .order('created_at', { ascending: false })
@@ -100,6 +107,7 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
   const findings = (findingsData ?? []) as FindingItem[];
   const versions = allVersions as VersionData[];
   const latestApproval = approvalRes.data ?? null;
+  const latestEscalation = escalationRes.data ?? null;
 
   return (
     <SubmissionReviewClient
@@ -127,6 +135,8 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
           ? latestApproval.note || null
           : null
       }
+      escalationReason={latestEscalation?.reason || null}
+      escalationResolutionNote={latestEscalation?.resolution_note || null}
     />
   );
 }

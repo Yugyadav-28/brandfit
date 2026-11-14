@@ -158,37 +158,69 @@ async function MySubmissionsContent() {
         });
       }
     }
+
+    // 5. Fetch escalations for user submissions (to retrieve resolution notes)
+    const { data: escalationsData } = await admin
+      .from('escalations')
+      .select('submission_id, status, reason, resolution_note, created_at, resolved_at')
+      .in('submission_id', subIds)
+      .order('created_at', { ascending: false });
+
+    const latestEscalationMap = new Map<
+      string,
+      { reason: string; resolution_note: string | null; status: string }
+    >();
+    for (const esc of escalationsData ?? []) {
+      if (!latestEscalationMap.has(esc.submission_id)) {
+        latestEscalationMap.set(esc.submission_id, {
+          reason: esc.reason,
+          resolution_note: esc.resolution_note || null,
+          status: esc.status,
+        });
+      }
+    }
+
+    // Build submission items
+    const items: MySubmissionItem[] = submissions.map((s) => {
+      const vCount = versionCountMap.get(s.id) || 1;
+      const latestVId = latestVersionIdMap.get(s.id);
+      const findingsCount = latestVId
+        ? latestFindingsCountMap.get(latestVId) || 0
+        : 0;
+      const approvalInfo = latestNotesMap.get(s.id);
+      const escInfo = latestEscalationMap.get(s.id);
+
+      return {
+        id: s.id,
+        title: s.title,
+        status: s.status,
+        company_id: s.company_id,
+        company_name: companyMap.get(s.company_id),
+        versionCount: vCount,
+        latestFindingsCount: findingsCount,
+        updated_at: s.updated_at,
+        created_at: s.created_at,
+        latestReviewerNote: approvalInfo?.note || null,
+        latestDecision: approvalInfo?.decision || null,
+        resolutionNote: escInfo?.resolution_note || null,
+      };
+    });
+
+    return (
+      <MySubmissionsClient
+        submissions={items}
+        topMistakes={topMistakes}
+        totalFindingsCount={totalFindingsCount}
+      />
+    );
   }
 
-  // Build submission items
-  const items: MySubmissionItem[] = submissions.map((s) => {
-    const vCount = versionCountMap.get(s.id) || 1;
-    const latestVId = latestVersionIdMap.get(s.id);
-    const findingsCount = latestVId
-      ? latestFindingsCountMap.get(latestVId) || 0
-      : 0;
-    const approvalInfo = latestNotesMap.get(s.id);
-
-    return {
-      id: s.id,
-      title: s.title,
-      status: s.status,
-      company_id: s.company_id,
-      company_name: companyMap.get(s.company_id),
-      versionCount: vCount,
-      latestFindingsCount: findingsCount,
-      updated_at: s.updated_at,
-      created_at: s.created_at,
-      latestReviewerNote: approvalInfo?.note || null,
-      latestDecision: approvalInfo?.decision || null,
-    };
-  });
-
+  // If no submissions
   return (
     <MySubmissionsClient
-      submissions={items}
-      topMistakes={topMistakes}
-      totalFindingsCount={totalFindingsCount}
+      submissions={[]}
+      topMistakes={[]}
+      totalFindingsCount={0}
     />
   );
 }

@@ -15,6 +15,7 @@ import {
   Building2,
   User,
   Calendar,
+  ShieldAlert,
 } from 'lucide-react';
 
 export interface ReviewSubmissionItem {
@@ -42,6 +43,7 @@ interface ReviewDashboardClientProps {
   companies: CompanyOption[];
   activeCompanyId: string;
   inReviewSubmissions: ReviewSubmissionItem[];
+  escalatedSubmissions?: ReviewSubmissionItem[];
   decidedSubmissions: ReviewSubmissionItem[];
 }
 
@@ -64,6 +66,7 @@ export function ReviewDashboardClient({
   companies,
   activeCompanyId,
   inReviewSubmissions,
+  escalatedSubmissions = [],
   decidedSubmissions,
 }: ReviewDashboardClientProps) {
   const router = useRouter();
@@ -71,6 +74,10 @@ export function ReviewDashboardClient({
 
   const activeCompany =
     companies.find((c) => c.companyId === activeCompanyId) || companies[0];
+
+  const isAuthorised =
+    activeCompany?.role === 'authorised_reviewer' ||
+    activeCompany?.role === 'employer';
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 w-full">
@@ -82,7 +89,7 @@ export function ReviewDashboardClient({
               Review Queue
             </h1>
             <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-primary/10 text-primary border border-primary/20 capitalize">
-              {activeCompany?.role || 'Reviewer'}
+              {activeCompany?.role ? activeCompany.role.replace('_', ' ') : 'Reviewer'}
             </span>
           </div>
           <p className="text-sm text-muted-foreground flex items-center gap-1.5">
@@ -105,10 +112,153 @@ export function ReviewDashboardClient({
             >
               {companies.map((c) => (
                 <option key={c.companyId} value={c.companyId}>
-                  {c.companyName} ({c.role})
+                  {c.companyName} ({c.role.replace('_', ' ')})
                 </option>
               ))}
             </select>
+          </div>
+        )}
+      </div>
+
+      {/* Section: Waiting for authorised sign off */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <ShieldAlert className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <h2 className="text-lg font-semibold text-foreground">
+              Waiting for authorised sign off
+            </h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-semibold border border-purple-300 dark:border-purple-800">
+              {escalatedSubmissions.length}
+            </span>
+          </div>
+        </div>
+
+        {escalatedSubmissions.length === 0 ? (
+          <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
+            <CheckCircle2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+            <h3 className="text-sm font-semibold text-foreground">
+              No posts waiting for authorised sign off
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              There are no escalated submissions requiring executive or authorised reviewer sign-off in this workspace.
+            </p>
+          </div>
+        ) : (
+          <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted/40 text-xs uppercase text-muted-foreground border-b border-border">
+                  <tr>
+                    <th scope="col" className="px-5 py-3.5 font-semibold">
+                      Submission Title
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-semibold">
+                      Author
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-semibold">
+                      Escalated Date
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-semibold text-center">
+                      Total Issues
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-semibold">
+                      Author Decisions
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-semibold text-right">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {escalatedSubmissions.map((sub) => (
+                    <tr
+                      key={sub.id}
+                      className="hover:bg-muted/30 transition-colors"
+                    >
+                      {/* Title */}
+                      <td className="px-5 py-4">
+                        <Link
+                          href={`/review/${sub.id}`}
+                          className="font-semibold text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <span>{sub.title}</span>
+                          <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                        </Link>
+                      </td>
+
+                      {/* Author */}
+                      <td className="px-5 py-4 text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 opacity-70" />
+                          <span>{sub.author_name}</span>
+                        </div>
+                      </td>
+
+                      {/* Escalated Date */}
+                      <td className="px-5 py-4 text-muted-foreground text-xs font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 opacity-70" />
+                          <span>{formatDate(sub.updated_at || sub.created_at)}</span>
+                        </div>
+                      </td>
+
+                      {/* Finding Count */}
+                      <td className="px-5 py-4 text-center">
+                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200">
+                          {sub.totalFindings}
+                        </span>
+                      </td>
+
+                      {/* Author Decisions */}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2 flex-wrap text-xs">
+                          <span
+                            title="Accepted suggestions"
+                            className="inline-flex items-center px-2 py-0.5 rounded font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                          >
+                            ✓ {sub.acceptedCount} accepted
+                          </span>
+                          <span
+                            title="Custom edited text"
+                            className="inline-flex items-center px-2 py-0.5 rounded font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                          >
+                            ✎ {sub.editedCount} edited
+                          </span>
+                          <span
+                            title="Rejected findings"
+                            className="inline-flex items-center px-2 py-0.5 rounded font-medium bg-muted text-muted-foreground border border-border"
+                          >
+                            ✕ {sub.rejectedCount} rejected
+                          </span>
+                          {sub.pendingCount > 0 && (
+                            <span
+                              title="Pending findings"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200"
+                            >
+                              {sub.pendingCount} pending
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Action */}
+                      <td className="px-5 py-4 text-right">
+                        {isAuthorised ? (
+                          <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
+                            <Link href={`/review/${sub.id}`}>Sign off</Link>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic px-2.5 py-1 rounded bg-muted/60 border border-border">
+                            Waiting for authorised sign off
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

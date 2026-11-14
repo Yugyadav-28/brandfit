@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Building2,
   Calendar,
+  ShieldAlert,
 } from 'lucide-react';
 
 export interface MySubmissionItem {
@@ -30,6 +31,7 @@ export interface MySubmissionItem {
   created_at: string;
   latestReviewerNote?: string | null;
   latestDecision?: string | null;
+  resolutionNote?: string | null;
 }
 
 export interface RuleMistakeStat {
@@ -74,6 +76,13 @@ function getStatusBadge(status: string) {
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-200 uppercase tracking-wider">
           <AlertTriangle className="h-3 w-3" />
           <span>Changes Requested</span>
+        </span>
+      );
+    case 'escalated':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-200 uppercase tracking-wider">
+          <ShieldAlert className="h-3 w-3" />
+          <span>Escalated (Waiting for authorised sign off)</span>
         </span>
       );
     case 'in_review':
@@ -203,7 +212,7 @@ export function MySubmissionsClient({
           </h2>
 
           <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-lg border border-border text-xs">
-            {['all', 'draft', 'in_review', 'approved', 'changes_requested'].map(
+            {['all', 'draft', 'in_review', 'escalated', 'approved', 'changes_requested'].map(
               (st) => (
                 <button
                   key={st}
@@ -326,9 +335,26 @@ export function MySubmissionsClient({
                         </div>
                       </td>
 
-                      {/* Reviewer Latest Note */}
+                      {/* Reviewer Latest Note / Escalation Resolution */}
                       <td className="px-5 py-4 max-w-xs">
-                        {sub.latestReviewerNote ? (
+                        {sub.status === 'escalated' ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-700 dark:text-purple-400">
+                              <Clock className="h-3 w-3" />
+                              <span>Waiting for authorised sign off</span>
+                            </div>
+                          </div>
+                        ) : sub.resolutionNote ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-[11px] font-semibold text-purple-700 dark:text-purple-400">
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Resolution Note:</span>
+                            </div>
+                            <p className="text-xs text-foreground italic line-clamp-2 bg-purple-50/60 dark:bg-purple-950/40 p-1.5 rounded border border-purple-200 dark:border-purple-800">
+                              &ldquo;{sub.resolutionNote}&rdquo;
+                            </p>
+                          </div>
+                        ) : sub.latestReviewerNote ? (
                           <div className="space-y-1">
                             <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
                               <MessageSquare className="h-3 w-3" />
