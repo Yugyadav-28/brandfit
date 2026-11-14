@@ -16,6 +16,7 @@ import {
   type ActionResult,
 } from "@/app/actions/guidelines";
 import { createAdminClient } from "@/lib/supabase/admin";
+import kit from "@/seed/sample-brand-kit.json";
 
 export {
   deleteRuleAction,
@@ -39,14 +40,15 @@ export async function saveRuleAction(
     category: string;
     title: string;
     body: string;
+    needs_escalation?: boolean;
   },
 ): Promise<ActionResult & { ruleId?: string }> {
   const res = await baseSaveRuleAction(companyId, data);
   if (!res.error) {
     let ruleId = data.id;
+    const admin = createAdminClient();
     if (!ruleId) {
       try {
-        const admin = createAdminClient();
         const { data: rule } = await admin
           .from("rules")
           .select("id")
@@ -59,6 +61,17 @@ export async function saveRuleAction(
       }
     }
     if (ruleId) {
+      if (data.needs_escalation !== undefined) {
+        try {
+          await admin
+            .from("rules")
+            .update({ needs_escalation: Boolean(data.needs_escalation) })
+            .eq("id", ruleId)
+            .eq("company_id", companyId);
+        } catch (err) {
+          console.error("Failed to update needs_escalation:", err);
+        }
+      }
       // Call refreshRuleEmbedding(ruleId) without waiting for it, ignore errors
       refreshRuleEmbedding(ruleId).catch(() => {});
     }
@@ -114,6 +127,21 @@ export async function loadSampleBrandKitAction(
 ): Promise<ActionResult> {
   const res = await baseLoadSampleBrandKitAction(companyId);
   if (!res.error) {
+    // Check if any rule in kit has needs_escalation
+    try {
+      const admin = createAdminClient();
+      for (const r of (kit.rules as any[]) || []) {
+        if (r.needs_escalation !== undefined) {
+          await admin
+            .from("rules")
+            .update({ needs_escalation: Boolean(r.needs_escalation) })
+            .eq("company_id", companyId)
+            .ilike("code", r.code.trim());
+        }
+      }
+    } catch (err) {
+      console.error("Error setting needs_escalation for sample kit:", err);
+    }
     // Call refreshAllEmbeddings without waiting for it, ignore errors
     refreshAllEmbeddings(companyId).catch(() => {});
   }

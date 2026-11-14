@@ -52,7 +52,7 @@ async function GuidelinesContent() {
   // Fetch rules
   const { data: rules } = await admin
     .from("rules")
-    .select("id, code, category, title, body, created_at")
+    .select("id, code, category, title, body, needs_escalation, created_at")
     .eq("company_id", companyId)
     .order("code", { ascending: true });
 

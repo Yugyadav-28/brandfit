@@ -23,7 +23,9 @@ export async function Nav() {
     .eq("user_id", user.id);
 
   const employerMembership = memberships?.find((m) => m.role === "employer");
-  const reviewerMembership = memberships?.find((m) => m.role === "reviewer");
+  const reviewerMembership = memberships?.find(
+    (m) => m.role === "reviewer" || m.role === "authorised_reviewer",
+  );
   const activeMembership =
     employerMembership || reviewerMembership || (memberships && memberships[0]);
 
@@ -55,7 +57,7 @@ export async function Nav() {
       { label: "Settings", href: "/company/settings" },
       { label: "Review", href: "/review" },
     );
-  } else if (role === "reviewer") {
+  } else if (role === "reviewer" || role === "authorised_reviewer") {
     links.push(
       { label: "Dashboard", href: "/dashboard" },
       { label: "Insights", href: "/dashboard/insights" },

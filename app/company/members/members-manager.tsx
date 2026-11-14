@@ -4,10 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  setMemberRoleAction,
   switchMemberRoleAction,
   removeMemberAction,
   regenerateJoinCodeAction,
-} from "@/app/actions/members";
+} from "./actions";
 import {
   KeyRound,
   RefreshCw,
@@ -62,6 +63,30 @@ export function MembersManager({
 
   // Confirm regenerate code state
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
+
+  // Set role handler (Employee, Reviewer, Authorised reviewer)
+  const handleRoleChange = (
+    targetUserId: string,
+    newRole: "employee" | "reviewer" | "authorised_reviewer",
+  ) => {
+    setFeedback(null);
+    startTransition(async () => {
+      const res = await setMemberRoleAction(companyId, targetUserId, newRole);
+      if (res.error) {
+        setFeedback({ type: "error", message: res.error });
+      } else {
+        const label =
+          newRole === "authorised_reviewer"
+            ? "Authorised reviewer"
+            : newRole.charAt(0).toUpperCase() + newRole.slice(1);
+        setFeedback({
+          type: "success",
+          message: `Updated member role to ${label}.`,
+        });
+        router.refresh();
+      }
+    });
+  };
 
   // Switch role handler
   const handleSwitchRole = (targetUserId: string, currentRole: string) => {
@@ -332,6 +357,11 @@ export function MembersManager({
                           Employer
                         </span>
                       )}
+                      {member.role === "authorised_reviewer" && (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30">
+                          Authorised reviewer
+                        </span>
+                      )}
                       {member.role === "reviewer" && (
                         <span className="capitalize px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
                           Reviewer
@@ -361,34 +391,28 @@ export function MembersManager({
                         </span>
                       ) : (
                         <div className="flex items-center justify-end gap-2">
-                          {/* Role switch button */}
-                          {member.role === "employee" && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSwitchRole(member.user_id, member.role)}
-                              disabled={isPending}
-                              className="text-xs flex items-center gap-1 h-8"
-                            >
-                              <UserCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                              Make Reviewer
-                            </Button>
-                          )}
-
-                          {member.role === "reviewer" && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSwitchRole(member.user_id, member.role)}
-                              disabled={isPending}
-                              className="text-xs flex items-center gap-1 h-8"
-                            >
-                              <UserMinus className="h-3.5 w-3.5 text-muted-foreground" />
-                              Make Employee
-                            </Button>
-                          )}
+                          {/* Role choices: Employee, Reviewer, Authorised reviewer */}
+                          <select
+                            value={member.role}
+                            onChange={(e) =>
+                              handleRoleChange(
+                                member.user_id,
+                                e.target.value as
+                                  | "employee"
+                                  | "reviewer"
+                                  | "authorised_reviewer",
+                              )
+                            }
+                            disabled={isPending}
+                            aria-label={`Role choice for ${member.display_name || "member"}`}
+                            className="text-xs h-8 rounded-md border border-input bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="employee">Employee</option>
+                            <option value="reviewer">Reviewer</option>
+                            <option value="authorised_reviewer">
+                              Authorised reviewer
+                            </option>
+                          </select>
 
                           {/* Remove button */}
                           <Button
@@ -402,10 +426,10 @@ export function MembersManager({
                               })
                             }
                             disabled={isPending}
-                            className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
-                            aria-label={`Remove ${member.display_name}`}
+                            className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                            aria-label={`Remove ${member.display_name || "member"}`}
                           >
-                            Remove
+                            <UserMinus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       )}
