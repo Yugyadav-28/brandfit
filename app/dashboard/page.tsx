@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Edit3,
   BarChart3,
+  ShieldAlert,
 } from "lucide-react";
 import { calculateTeamActivity, type TeamActivityRow } from "@/lib/insights/teamActivity";
 
@@ -29,6 +30,7 @@ export const metadata = {
 interface WaitingSubmission {
   id: string;
   title: string;
+  status: string;
   author_display_name: string;
   created_at: string;
   findings_count: number;
@@ -50,6 +52,7 @@ async function fetchDashboardData(companyId: string) {
 
   // Status counts
   const inReviewCount = submissions.filter((s) => s.status === "in_review").length;
+  const escalatedCount = submissions.filter((s) => s.status === "escalated").length;
   const approvedCount = submissions.filter((s) => s.status === "approved").length;
   const changesCount = submissions.filter(
     (s) => s.status === "changes_requested",
@@ -109,15 +112,16 @@ async function fetchDashboardData(companyId: string) {
     findingsCountByVersion.set(f.version_id, (findingsCountByVersion.get(f.version_id) ?? 0) + 1);
   }
 
-  // 5. Build "Waiting for review" table
+  // 5. Build "Waiting for review" table (includes in_review and escalated posts)
   const waitingSubmissions: WaitingSubmission[] = submissions
-    .filter((s) => s.status === "in_review")
+    .filter((s) => s.status === "in_review" || s.status === "escalated")
     .map((s) => {
       const vIds = versionIdsBySubmission.get(s.id) ?? [];
       const findingsCount = vIds.reduce((sum, vid) => sum + (findingsCountByVersion.get(vid) ?? 0), 0);
       return {
         id: s.id,
         title: s.title,
+        status: s.status,
         author_display_name:
           memberMap.get(s.author_id)?.display_name ?? "Unknown",
         created_at: s.created_at,
@@ -135,6 +139,7 @@ async function fetchDashboardData(companyId: string) {
 
   return {
     inReviewCount,
+    escalatedCount,
     approvedCount,
     changesCount,
     membersCount: membersCount ?? 0,
@@ -160,7 +165,7 @@ async function DashboardContent() {
   }
 
   const employerM = memberships.find((m) => m.role === "employer");
-  const reviewerM = memberships.find((m) => m.role === "reviewer");
+  const reviewerM = memberships.find((m) => m.role === "reviewer" || m.role === "authorised_reviewer");
   const activeMembership = employerM ?? reviewerM;
 
   if (!activeMembership) {
@@ -171,8 +176,8 @@ async function DashboardContent() {
   const companyId = activeMembership.company_id;
 
   // Strict role check
-  const allowedRoles: ("employer" | "reviewer")[] = ["employer", "reviewer"];
-  if (!allowedRoles.includes(activeMembership.role as "employer" | "reviewer")) {
+  const allowedRoles = ["employer", "reviewer", "authorised_reviewer"];
+  if (!allowedRoles.includes(activeMembership.role)) {
     redirect("/my");
   }
 
@@ -188,6 +193,7 @@ async function DashboardContent() {
 
   const {
     inReviewCount,
+    escalatedCount,
     approvedCount,
     changesCount,
     membersCount,
@@ -232,12 +238,19 @@ async function DashboardContent() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
           Overview
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatCard
             icon={<ClipboardCheck className="h-5 w-5" />}
             label="Waiting for review"
             value={inReviewCount}
             accent="blue"
+            href="/review"
+          />
+          <StatCard
+            icon={<ShieldAlert className="h-5 w-5" />}
+            label="Escalated"
+            value={escalatedCount}
+            accent="purple"
             href="/review"
           />
           <StatCard
@@ -309,7 +322,15 @@ async function DashboardContent() {
                   {waitingSubmissions.map((sub) => (
                     <tr key={sub.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-4 font-medium text-foreground">
-                        {sub.title}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{sub.title}</span>
+                          {sub.status === "escalated" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800 uppercase tracking-wide">
+                              <ShieldAlert className="h-3 w-3" />
+                              Escalated
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-muted-foreground text-xs">
                         {sub.author_display_name}

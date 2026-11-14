@@ -33,6 +33,7 @@ export interface RuleItem {
   category: string;
   title: string;
   body: string;
+  needs_escalation?: boolean;
   created_at?: string;
 }
 
@@ -163,6 +164,7 @@ export function GuidelinesManager({
       category: ((formData.get("category") as string) || "").trim(),
       title: ((formData.get("title") as string) || "").trim(),
       body: ((formData.get("body") as string) || "").trim(),
+      needs_escalation: formData.get("needs_escalation") === "on",
     };
 
     startTransition(async () => {
@@ -526,7 +528,14 @@ export function GuidelinesManager({
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-foreground">{rule.title}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-foreground">{rule.title}</span>
+                          {rule.needs_escalation && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                              Sensitive
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {rule.body}
                         </div>
@@ -879,6 +888,22 @@ export function GuidelinesManager({
                   required
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="rule-needs-escalation"
+                  name="needs_escalation"
+                  defaultChecked={editingRule?.needs_escalation ?? false}
+                  className="h-4 w-4 rounded border-input bg-background text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <Label
+                  htmlFor="rule-needs-escalation"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Needs authorised reviewer sign off
+                </Label>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t">
