@@ -13,7 +13,7 @@ import {
   saveTermAction,
   deleteTermAction,
   loadSampleBrandKitAction,
-} from "@/app/actions/guidelines";
+} from "./actions";
 import {
   Sparkles,
   Plus,
