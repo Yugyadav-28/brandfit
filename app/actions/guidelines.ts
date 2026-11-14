@@ -1,11 +1,10 @@
 "use server";
 
-import fs from "fs/promises";
-import path from "path";
 import { revalidatePath } from "next/cache";
 import { requireMember, requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import kit from "@/seed/sample-brand-kit.json";
 
 export interface ActionResult {
   success?: boolean;
@@ -366,40 +365,6 @@ export async function loadSampleBrandKitAction(
 ): Promise<ActionResult> {
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
-
-  // Look for seed/sample-brandkit.json or seed/sample-brand-kit.json
-  const candidatePaths = [
-    path.join(process.cwd(), "seed", "sample-brandkit.json"),
-    path.join(process.cwd(), "seed", "sample-brand-kit.json"),
-  ];
-
-  let rawJson = "";
-  for (const p of candidatePaths) {
-    try {
-      rawJson = await fs.readFile(p, "utf-8");
-      if (rawJson) break;
-    } catch {
-      // try next path
-    }
-  }
-
-  if (!rawJson) {
-    return { error: "Unable to find the sample brand kit file on the server." };
-  }
-
-  let kit: {
-    company?: string;
-    rules?: Array<{ code: string; category: string; title: string; body: string }>;
-    facts?: Array<{ code: string; statement: string; source: string }>;
-    terms?: Array<{ preferred: string; avoid: string; note: string }>;
-  };
-
-  try {
-    kit = JSON.parse(rawJson);
-  } catch (err) {
-    console.error("JSON parse error:", err);
-    return { error: "The sample brand kit file could not be read." };
-  }
 
   // 1. Insert rules (skip existing codes)
   const { data: existingRules } = await admin
