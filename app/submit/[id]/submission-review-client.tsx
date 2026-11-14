@@ -103,9 +103,8 @@ export interface SubmissionReviewClientProps {
   terms: TermItem[];
   initialAiStatus: 'ok' | 'unavailable' | 'unknown';
   reviewerFeedbackNote?: string | null;
-  reviewResult?: ReviewResultData | null;
-  retrieval?: RetrievalStats | null;
-  initialRetrieval?: RetrievalStats | null;
+  escalationReason?: string | null;
+  escalationResolutionNote?: string | null;
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -196,9 +195,8 @@ export function SubmissionReviewClient({
   terms,
   initialAiStatus,
   reviewerFeedbackNote,
-  reviewResult,
-  retrieval,
-  initialRetrieval,
+  escalationReason,
+  escalationResolutionNote,
 }: SubmissionReviewClientProps) {
   const [versions, setVersions] = useState<VersionData[]>(() => {
     return [...initialVersions].sort((a, b) => b.version_no - a.version_no);
@@ -648,14 +646,18 @@ export function SubmissionReviewClient({
             </h1>
             <span
               className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border uppercase ${
-                submissionStatus === 'in_review'
+                submissionStatus === 'escalated'
+                  ? 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800'
+                  : submissionStatus === 'in_review'
                   ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800'
                   : submissionStatus === 'approved'
                   ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800'
                   : 'bg-muted/60 text-muted-foreground border-border'
               }`}
             >
-              {submissionStatus.replace('_', ' ')}
+              {submissionStatus === 'escalated'
+                ? 'Escalated (Waiting for authorised sign off)'
+                : submissionStatus.replace('_', ' ')}
             </span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
               Viewing v{activeVersion.version_no}{' '}
@@ -685,7 +687,8 @@ export function SubmissionReviewClient({
             disabled={
               isSending ||
               isRechecking ||
-              submissionStatus === 'in_review'
+              submissionStatus === 'in_review' ||
+              submissionStatus === 'escalated'
             }
             className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
           >
@@ -693,6 +696,8 @@ export function SubmissionReviewClient({
             <span>
               {submissionStatus === 'in_review'
                 ? 'In Review'
+                : submissionStatus === 'escalated'
+                ? 'Escalated'
                 : isSending
                 ? 'Sending...'
                 : 'Send for review'}
@@ -766,6 +771,53 @@ export function SubmissionReviewClient({
           >
             Switch to Latest (v{latestVersion.version_no})
           </Button>
+        </div>
+      )}
+
+      {/* Escalated Status Banner */}
+      {submissionStatus === 'escalated' && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl border border-purple-300 bg-purple-50 dark:bg-purple-950/40 dark:border-purple-800 text-purple-900 dark:text-purple-200 shadow-sm space-y-2.5"
+        >
+          <div className="flex items-center gap-2 font-semibold text-purple-800 dark:text-purple-300">
+            <ShieldAlert className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span className="text-base">Escalated — Waiting for authorised sign off</span>
+          </div>
+          <p className="text-sm pl-7 text-purple-800 dark:text-purple-300">
+            This submission cites a sensitive rule or was escalated for authorised review. An authorised reviewer or employer will review and decide on this post.
+          </p>
+          {escalationReason && (
+            <div className="pl-7 space-y-1">
+              <span className="text-xs uppercase font-bold text-purple-700 dark:text-purple-400">
+                Reason for Escalation:
+              </span>
+              <blockquote className="text-sm font-medium italic border-l-2 border-purple-400 pl-3 py-1 bg-purple-100/50 dark:bg-purple-900/30 rounded-r text-foreground">
+                &ldquo;{escalationReason}&rdquo;
+              </blockquote>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Escalation Resolution Note (once resolved) */}
+      {escalationResolutionNote && submissionStatus !== 'escalated' && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl border border-purple-300 bg-purple-50 dark:bg-purple-950/40 dark:border-purple-800 text-purple-900 dark:text-purple-200 shadow-sm space-y-2.5"
+        >
+          <div className="flex items-center gap-2 font-semibold text-purple-800 dark:text-purple-300">
+            <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span className="text-base">Authorised Sign-off Resolution</span>
+          </div>
+          <div className="pl-7 space-y-1">
+            <span className="text-xs uppercase font-bold text-purple-700 dark:text-purple-400">
+              Resolution Note:
+            </span>
+            <blockquote className="text-sm font-medium italic border-l-2 border-purple-400 pl-3 py-1 bg-purple-100/50 dark:bg-purple-900/30 rounded-r text-foreground">
+              &ldquo;{escalationResolutionNote}&rdquo;
+            </blockquote>
+          </div>
         </div>
       )}
 

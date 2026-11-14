@@ -87,6 +87,19 @@ export interface ApprovalItem {
   reviewer_display_name?: string;
 }
 
+export interface EscalationInfo {
+  id: string;
+  submission_id: string;
+  requested_by: string;
+  requested_by_name: string;
+  reason: string;
+  status: string;
+  resolved_by?: string | null;
+  resolution_note?: string | null;
+  created_at: string;
+  resolved_at?: string | null;
+}
+
 export interface SubmissionDetails {
   id: string;
   title: string;
@@ -121,7 +134,7 @@ export function getRetrievalLine(stats?: RetrievalStats | null): string | null {
 export interface ReviewerClientProps {
   submission: SubmissionDetails;
   currentUserId: string;
-  currentUserRole: 'reviewer' | 'employer';
+  currentUserRole: 'reviewer' | 'authorised_reviewer' | 'employer';
   versions: VersionItem[];
   initialFindings: FindingItem[];
   rules: RuleItem[];
@@ -130,9 +143,8 @@ export interface ReviewerClientProps {
   initialComments: CommentItem[];
   initialApprovals: ApprovalItem[];
   initialAiStatus?: 'ok' | 'unavailable' | 'unknown';
-  reviewResult?: ReviewResultData | null;
-  retrieval?: RetrievalStats | null;
-  initialRetrieval?: RetrievalStats | null;
+  needsEscalation?: boolean;
+  escalation?: EscalationInfo | null;
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -227,9 +239,8 @@ export function ReviewerClient({
   initialComments,
   initialApprovals,
   initialAiStatus,
-  reviewResult,
-  retrieval,
-  initialRetrieval,
+  needsEscalation = false,
+  escalation = null,
 }: ReviewerClientProps) {
   const [selectedVersionId, setSelectedVersionId] = useState<string>(
     versions[0]?.id || '',
@@ -258,6 +269,18 @@ export function ReviewerClient({
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [approvals, setApprovals] = useState<ApprovalItem[]>(initialApprovals);
+
+  // Escalation States
+  const [currentEscalation, setCurrentEscalation] = useState<EscalationInfo | null>(escalation);
+  const [isEscalateModalOpen, setIsEscalateModalOpen] = useState(false);
+  const [escalateReason, setEscalateReason] = useState('');
+  const [isSubmittingEscalate, setIsSubmittingEscalate] = useState(false);
+
+  // Resolve Escalation States
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [resolveDecision, setResolveDecision] = useState<'approved' | 'changes_requested'>('approved');
+  const [resolveNote, setResolveNote] = useState('');
+  const [isSubmittingResolve, setIsSubmittingResolve] = useState(false);
 
   // Decision Modal States
   const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
@@ -405,9 +428,106 @@ export function ReviewerClient({
     return fragments;
   }, [activeVersion.content, highlightSpans]);
 
-  // Self-approval rule check
+  // Role & self-approval rule checks
   const isOwnSubmission = submission.author_id === currentUserId;
+  const isAuthorised =
+    currentUserRole === 'authorised_reviewer' || currentUserRole === 'employer';
+  const isReviewer = currentUserRole === 'reviewer';
   const canApprove = currentUserRole === 'employer' || !isOwnSubmission;
+
+  // Handle Escalate submit
+  async function handleEscalateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+
+    if (!escalateReason.trim()) {
+      setActionError('A reason for escalation is required');
+      return;
+    }
+
+    setIsSubmittingEscalate(true);
+    try {
+      const res = await fetch(`/api/submissions/${submission.id}/escalate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: escalateReason.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to escalate submission');
+      }
+
+      setSubmissionStatus('escalated');
+      if (data.escalation) {
+        setCurrentEscalation({
+          ...data.escalation,
+          requested_by_name: 'You',
+        });
+      }
+      setIsEscalateModalOpen(false);
+      setEscalateReason('');
+      setActionSuccess('Submission has been escalated for authorised sign off.');
+    } catch (err: any) {
+      setActionError(err.message || 'Error escalating submission');
+    } finally {
+      setIsSubmittingEscalate(false);
+    }
+  }
+
+  // Handle Resolve Escalation submit (for authorised reviewer or employer)
+  async function handleResolveSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+
+    if (!currentEscalation?.id) {
+      setActionError('No active escalation found to resolve');
+      return;
+    }
+
+    if (resolveDecision === 'changes_requested' && !resolveNote.trim()) {
+      setActionError('A note explaining requested changes is required');
+      return;
+    }
+
+    setIsSubmittingResolve(true);
+    try {
+      const res = await fetch(`/api/escalations/${currentEscalation.id}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          decision: resolveDecision,
+          note: resolveNote.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to resolve escalation');
+      }
+
+      setSubmissionStatus(resolveDecision);
+      if (data.escalation) {
+        setCurrentEscalation(data.escalation);
+      }
+      if (data.approval) {
+        setApprovals((prev) => [data.approval, ...prev]);
+      }
+      setIsResolveModalOpen(false);
+      setResolveNote('');
+      setActionSuccess(
+        resolveDecision === 'approved'
+          ? 'Escalation resolved: Submission has been approved!'
+          : 'Escalation resolved: Changes requested and author notified.',
+      );
+    } catch (err: any) {
+      setActionError(err.message || 'Error resolving escalation');
+    } finally {
+      setIsSubmittingResolve(false);
+    }
+  }
 
   // Handle Decision submit (Approve or Request changes)
   async function handleDecisionSubmit(e: React.FormEvent) {
@@ -507,6 +627,8 @@ export function ReviewerClient({
                   ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200'
                   : submissionStatus === 'changes_requested'
                   ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-200'
+                  : submissionStatus === 'escalated'
+                  ? 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-200'
                   : 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-200'
               }`}
             >
@@ -523,43 +645,154 @@ export function ReviewerClient({
           </p>
         </div>
 
-        {/* Action Controls: Approve & Request changes */}
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setDecisionType('changes_requested');
-              setDecisionNote('');
-              setIsDecisionModalOpen(true);
-            }}
-            disabled={isSubmittingDecision}
-            className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
-          >
-            <RotateCcw className="h-4 w-4" />
-            <span>Request changes</span>
-          </Button>
+        {/* Action Controls */}
+        <div className="flex flex-col items-end gap-1.5">
+          {submissionStatus === 'escalated' ? (
+            isAuthorised ? (
+              <div className="flex items-center gap-2.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setResolveDecision('changes_requested');
+                    setResolveNote('');
+                    setIsResolveModalOpen(true);
+                  }}
+                  disabled={isSubmittingResolve}
+                  className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Request changes</span>
+                </Button>
 
-          <Button
-            size="sm"
-            onClick={() => {
-              setDecisionType('approved');
-              setDecisionNote('');
-              setIsDecisionModalOpen(true);
-            }}
-            disabled={!canApprove || isSubmittingDecision}
-            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-            title={
-              !canApprove
-                ? 'Reviewers cannot approve their own submissions unless they are an employer'
-                : undefined
-            }
-          >
-            <Check className="h-4 w-4" />
-            <span>Approve</span>
-          </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setResolveDecision('approved');
+                    setResolveNote('');
+                    setIsResolveModalOpen(true);
+                  }}
+                  disabled={!canApprove || isSubmittingResolve}
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Check className="h-4 w-4" />
+                  <span>Approve</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium border border-border">
+                <Clock className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                <span>Waiting for authorised sign off</span>
+              </div>
+            )
+          ) : (
+            <>
+              <div className="flex items-center gap-2.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDecisionType('changes_requested');
+                    setDecisionNote('');
+                    setIsDecisionModalOpen(true);
+                  }}
+                  disabled={isSubmittingDecision}
+                  className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Request changes</span>
+                </Button>
+
+                {isReviewer && needsEscalation ? (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEscalateReason('');
+                      setIsEscalateModalOpen(true);
+                    }}
+                    disabled={isSubmittingEscalate}
+                    className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    <ShieldAlert className="h-4 w-4" />
+                    <span>Escalate for sign off</span>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setDecisionType('approved');
+                      setDecisionNote('');
+                      setIsDecisionModalOpen(true);
+                    }}
+                    disabled={!canApprove || isSubmittingDecision}
+                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    title={
+                      !canApprove
+                        ? 'Reviewers cannot approve their own submissions unless they are an employer'
+                        : undefined
+                    }
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>Approve</span>
+                  </Button>
+                )}
+              </div>
+
+              {isReviewer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEscalateReason('');
+                    setIsEscalateModalOpen(true);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline inline-flex items-center gap-1"
+                >
+                  <ShieldAlert className="h-3 w-3 text-purple-600" />
+                  <span>Escalate for authorised sign off</span>
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      {/* Sensitive rule escalation notice */}
+      {needsEscalation && submissionStatus !== 'escalated' && (
+        <div
+          role="alert"
+          className="p-3.5 rounded-lg border border-purple-300 bg-purple-50 dark:bg-purple-950/40 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-sm flex items-center gap-2"
+        >
+          <ShieldAlert className="h-4 w-4 shrink-0 text-purple-600 dark:text-purple-400" />
+          <span>This post cites a sensitive rule and needs authorised sign off.</span>
+        </div>
+      )}
+
+      {/* Escalation information banner if escalated */}
+      {submissionStatus === 'escalated' && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl border border-purple-300 bg-purple-50 dark:bg-purple-950/40 dark:border-purple-800 text-purple-900 dark:text-purple-200 shadow-sm space-y-2"
+        >
+          <div className="flex items-center gap-2 font-semibold">
+            <ShieldAlert className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span className="text-base">Submission Escalated</span>
+          </div>
+          <div className="pl-7 space-y-1 text-sm">
+            <p>
+              <strong>Reason:</strong>{' '}
+              {currentEscalation?.reason ||
+                'Awaiting authorised sign off for sensitive rules.'}
+            </p>
+            <p className="text-xs text-purple-700 dark:text-purple-300">
+              <strong>Requested by:</strong>{' '}
+              {currentEscalation?.requested_by_name || 'Reviewer'}
+              {currentEscalation?.created_at && (
+                <span> • {formatDate(currentEscalation.created_at)}</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Self-approval disclaimer if applicable */}
       {isOwnSubmission && currentUserRole === 'reviewer' && (
@@ -1041,6 +1274,192 @@ export function ReviewerClient({
                     ? 'Submitting...'
                     : decisionType === 'approved'
                     ? 'Confirm Approval'
+                    : 'Submit Request for Changes'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Escalate Modal (Reviewer escalates for authorised sign off) */}
+      {isEscalateModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-purple-600" />
+                <h3 className="text-lg font-semibold text-foreground">
+                  Escalate for Authorised Sign Off
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEscalateModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEscalateSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Escalating flags this submission for an authorised reviewer or
+                  employer to review and make the final decision.
+                </p>
+                <label
+                  htmlFor="escalate-reason"
+                  className="text-xs font-semibold text-foreground block"
+                >
+                  Reason for escalation (required):
+                </label>
+                <textarea
+                  id="escalate-reason"
+                  rows={4}
+                  value={escalateReason}
+                  onChange={(e) => setEscalateReason(e.target.value)}
+                  required
+                  placeholder="Explain why this post requires authorised sign off (e.g. sensitive claim, health or safety rules, legal wording)..."
+                  className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEscalateModalOpen(false)}
+                  disabled={isSubmittingEscalate}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSubmittingEscalate || !escalateReason.trim()}
+                  className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  <span>
+                    {isSubmittingEscalate
+                      ? 'Escalating...'
+                      : 'Confirm Escalation'}
+                  </span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Resolve Escalation Modal (Authorised reviewer / employer resolves escalation) */}
+      {isResolveModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">
+                {resolveDecision === 'approved'
+                  ? 'Authorise & Approve Submission'
+                  : 'Request Changes (Resolution)'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsResolveModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleResolveSubmit} className="space-y-4">
+              {resolveDecision === 'approved' ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Approving will resolve this escalation and update the
+                    submission status to{' '}
+                    <strong className="text-emerald-600">Approved</strong>.
+                  </p>
+                  <label
+                    htmlFor="resolve-note"
+                    className="text-xs font-semibold text-foreground block"
+                  >
+                    Optional resolution note:
+                  </label>
+                  <textarea
+                    id="resolve-note"
+                    rows={3}
+                    value={resolveNote}
+                    onChange={(e) => setResolveNote(e.target.value)}
+                    placeholder="Add an optional comment or sign-off note..."
+                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Requesting changes will resolve the escalation and update the
+                    submission status to{' '}
+                    <strong className="text-amber-600">
+                      Changes Requested
+                    </strong>
+                    .
+                  </p>
+                  <label
+                    htmlFor="resolve-note"
+                    className="text-xs font-semibold text-foreground block"
+                  >
+                    Feedback note (required):
+                  </label>
+                  <textarea
+                    id="resolve-note"
+                    rows={4}
+                    value={resolveNote}
+                    onChange={(e) => setResolveNote(e.target.value)}
+                    required
+                    placeholder="Explain what needs to be changed before this content can be approved..."
+                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsResolveModalOpen(false)}
+                  disabled={isSubmittingResolve}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    isSubmittingResolve ||
+                    (resolveDecision === 'changes_requested' &&
+                      !resolveNote.trim())
+                  }
+                  className={
+                    resolveDecision === 'approved'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white'
+                  }
+                >
+                  {isSubmittingResolve
+                    ? 'Submitting...'
+                    : resolveDecision === 'approved'
+                    ? 'Confirm Authorisation'
                     : 'Submit Request for Changes'}
                 </Button>
               </div>

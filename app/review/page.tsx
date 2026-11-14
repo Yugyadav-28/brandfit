@@ -18,10 +18,15 @@ async function ReviewContent({ searchParams }: ReviewPageProps) {
   const allMemberships = await getMyMemberships();
   const { companyId } = await searchParams;
 
-  // Filter for reviewer or employer memberships
-  const reviewerMemberships = allMemberships.filter(
-    (m) => m.role === 'reviewer' || m.role === 'employer',
-  );
+  // Filter for reviewer, authorised_reviewer or employer memberships
+  const reviewerMemberships = allMemberships.filter((m) => {
+    const role = m.role as string;
+    return (
+      role === 'reviewer' ||
+      role === 'authorised_reviewer' ||
+      role === 'employer'
+    );
+  });
 
   if (reviewerMemberships.length === 0) {
     return (
@@ -46,7 +51,11 @@ async function ReviewContent({ searchParams }: ReviewPageProps) {
       : reviewerMemberships[0].companyId;
 
   // Strict role check for this company
-  await requireMember(selectedCompanyId, ['reviewer', 'employer']);
+  await requireMember(selectedCompanyId, [
+    'reviewer',
+    'authorised_reviewer',
+    'employer',
+  ] as any);
 
   const admin = createAdminClient();
 
@@ -60,6 +69,18 @@ async function ReviewContent({ searchParams }: ReviewPageProps) {
 
   if (inReviewError) {
     console.error('Error fetching in_review submissions:', inReviewError);
+  }
+
+  // 1b. Fetch escalated submissions
+  const { data: escalatedData, error: escalatedError } = await admin
+    .from('submissions')
+    .select('*')
+    .eq('company_id', selectedCompanyId)
+    .eq('status', 'escalated')
+    .order('updated_at', { ascending: false });
+
+  if (escalatedError) {
+    console.error('Error fetching escalated submissions:', escalatedError);
   }
 
   // 2. Fetch recently decided submissions (approved or changes_requested)
@@ -76,8 +97,9 @@ async function ReviewContent({ searchParams }: ReviewPageProps) {
   }
 
   const inReviewSubs = inReviewData ?? [];
+  const escalatedSubs = escalatedData ?? [];
   const decidedSubs = decidedData ?? [];
-  const allSubs = [...inReviewSubs, ...decidedSubs];
+  const allSubs = [...inReviewSubs, ...escalatedSubs, ...decidedSubs];
 
   // 3. Fetch author names from memberships
   const { data: companyMembers } = await admin
@@ -198,6 +220,7 @@ async function ReviewContent({ searchParams }: ReviewPageProps) {
       companies={companies}
       activeCompanyId={selectedCompanyId}
       inReviewSubmissions={inReviewSubs.map(mapToItem)}
+      escalatedSubmissions={escalatedSubs.map(mapToItem)}
       decidedSubmissions={decidedSubs.map(mapToItem)}
     />
   );

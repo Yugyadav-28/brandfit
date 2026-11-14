@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { requireUser, requireMember } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { needsEscalation } from '@/lib/escalation/needsEscalation';
 import {
   ReviewerClient,
   FindingItem,
@@ -11,6 +12,7 @@ import {
   VersionItem,
   CommentItem,
   ApprovalItem,
+  EscalationInfo,
 } from './reviewer-client';
 
 interface ReviewDetailsProps {
@@ -46,11 +48,15 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
     notFound();
   }
 
-  // 2. Strict role check: reviewer or employer
+  // 2. Strict role check: reviewer, authorised_reviewer or employer
   const { role } = await requireMember(submission.company_id, [
     'reviewer',
+    'authorised_reviewer',
     'employer',
-  ]);
+  ] as any);
+
+  // 2b. Check if submission requires authorised sign-off
+  const isSensitive = await needsEscalation(id);
 
   // 3. Fetch all versions for this submission, newest first
   const { data: allVersions, error: verError } = await admin
@@ -75,8 +81,8 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
     console.error('Error fetching findings for review details:', findError);
   }
 
-  // 5. Fetch rules, facts, terms for citations
-  const [rulesRes, factsRes, termsRes, membersRes, commentsRes, approvalsRes] =
+  // 5. Fetch rules, facts, terms, memberships, comments, approvals, and escalations
+  const [rulesRes, factsRes, termsRes, membersRes, commentsRes, approvalsRes, escalationRes] =
     await Promise.all([
       admin.from('rules').select('*').eq('company_id', submission.company_id),
       admin.from('facts').select('*').eq('company_id', submission.company_id),
@@ -95,6 +101,13 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
         .select('*')
         .eq('submission_id', id)
         .order('created_at', { ascending: false }),
+      admin
+        .from('escalations')
+        .select('*')
+        .eq('submission_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   const memberMap = new Map(
@@ -121,6 +134,24 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
     };
   });
 
+  const escalationData = escalationRes.data ?? null;
+  let enrichedEscalation: EscalationInfo | null = null;
+  if (escalationData) {
+    const requesterMem = memberMap.get(escalationData.requested_by);
+    enrichedEscalation = {
+      id: escalationData.id,
+      submission_id: escalationData.submission_id,
+      requested_by: escalationData.requested_by,
+      requested_by_name: requesterMem?.display_name || 'Reviewer',
+      reason: escalationData.reason,
+      status: escalationData.status,
+      resolved_by: escalationData.resolved_by,
+      resolution_note: escalationData.resolution_note,
+      created_at: escalationData.created_at,
+      resolved_at: escalationData.resolved_at,
+    };
+  }
+
   const rules = (rulesRes.data ?? []) as RuleItem[];
   const facts = (factsRes.data ?? []) as FactItem[];
   const terms = (termsRes.data ?? []) as TermItem[];
@@ -140,7 +171,7 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
         updated_at: submission.updated_at,
       }}
       currentUserId={user.id}
-      currentUserRole={role as 'reviewer' | 'employer'}
+      currentUserRole={role as 'reviewer' | 'authorised_reviewer' | 'employer'}
       versions={versions}
       initialFindings={findings}
       rules={rules}
@@ -148,6 +179,8 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
       terms={terms}
       initialComments={enrichedComments}
       initialApprovals={enrichedApprovals}
+      needsEscalation={isSensitive}
+      escalation={enrichedEscalation}
       initialAiStatus={
         aiStatus === 'ok'
           ? 'ok'
