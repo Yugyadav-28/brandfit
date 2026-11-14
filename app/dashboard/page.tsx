@@ -14,7 +14,10 @@ import {
   AlertTriangle,
   History,
   AlertCircle,
+  Edit3,
+  BarChart3,
 } from "lucide-react";
+import { calculateTeamActivity, type TeamActivityRow } from "@/lib/insights/teamActivity";
 
 export const metadata = {
   title: "Dashboard - BrandFit",
@@ -29,16 +32,6 @@ interface WaitingSubmission {
   author_display_name: string;
   created_at: string;
   findings_count: number;
-}
-
-interface EmployeeStats {
-  user_id: string;
-  display_name: string;
-  submissions: number;
-  total_findings: number;
-  accepted: number;
-  rejected: number;
-  repeated_mistakes: number;
 }
 
 // ─── Data fetching helpers ───────────────────────────────────────────────────
@@ -68,7 +61,7 @@ async function fetchDashboardData(companyId: string) {
     .select("user_id", { count: "exact", head: true })
     .eq("company_id", companyId);
 
-  // 3. All memberships (for display_name lookup + employee stats)
+  // 3. All memberships (for display_name lookup + team stats)
   const { data: allMembers } = await admin
     .from("memberships")
     .select("user_id, role, display_name")
@@ -78,100 +71,67 @@ async function fetchDashboardData(companyId: string) {
     (allMembers ?? []).map((m) => [m.user_id, m]),
   );
 
-  // 4. All versions for submissions in this company
+  // 4. All versions and findings for submissions in this company
   const submissionIds = submissions.map((s) => s.id);
 
-  let versionsBySubmission = new Map<string, string[]>(); // submissionId → versionIds
-  let findingsByVersion = new Map<string, { rule_code: string; decision: string }[]>();
+  let allVersions: { id: string; submission_id: string; version_no?: number; created_at?: string }[] = [];
+  let allFindings: { id: string; version_id: string; rule_code?: string | null; decision?: string | null }[] = [];
 
   if (submissionIds.length > 0) {
-    const { data: allVersions } = await admin
+    const { data: versionsData } = await admin
       .from("versions")
-      .select("id, submission_id")
+      .select("id, submission_id, version_no, created_at")
       .in("submission_id", submissionIds);
 
-    const versions = allVersions ?? [];
-    for (const v of versions) {
-      const existing = versionsBySubmission.get(v.submission_id) ?? [];
-      existing.push(v.id);
-      versionsBySubmission.set(v.submission_id, existing);
-    }
-
-    const allVersionIds = versions.map((v) => v.id);
+    allVersions = versionsData ?? [];
+    const allVersionIds = allVersions.map((v) => v.id);
 
     if (allVersionIds.length > 0) {
-      const { data: allFindings } = await admin
+      const { data: findingsData } = await admin
         .from("findings")
         .select("id, version_id, rule_code, decision")
         .in("version_id", allVersionIds);
 
-      for (const f of allFindings ?? []) {
-        const existing = findingsByVersion.get(f.version_id) ?? [];
-        existing.push({ rule_code: f.rule_code ?? "", decision: f.decision ?? "pending" });
-        findingsByVersion.set(f.version_id, existing);
-      }
+      allFindings = findingsData ?? [];
     }
   }
 
-  // Helper: get all findings for a submission (across all its versions)
-  function findingsForSubmission(submissionId: string) {
-    const vIds = versionsBySubmission.get(submissionId) ?? [];
-    return vIds.flatMap((vId) => findingsByVersion.get(vId) ?? []);
+  // Map versions to submissions and findings count
+  const versionIdsBySubmission = new Map<string, string[]>();
+  for (const v of allVersions) {
+    const list = versionIdsBySubmission.get(v.submission_id) ?? [];
+    list.push(v.id);
+    versionIdsBySubmission.set(v.submission_id, list);
+  }
+
+  const findingsCountByVersion = new Map<string, number>();
+  for (const f of allFindings) {
+    findingsCountByVersion.set(f.version_id, (findingsCountByVersion.get(f.version_id) ?? 0) + 1);
   }
 
   // 5. Build "Waiting for review" table
   const waitingSubmissions: WaitingSubmission[] = submissions
     .filter((s) => s.status === "in_review")
-    .map((s) => ({
-      id: s.id,
-      title: s.title,
-      author_display_name:
-        memberMap.get(s.author_id)?.display_name ?? "Unknown",
-      created_at: s.created_at,
-      findings_count: findingsForSubmission(s.id).length,
-    }));
+    .map((s) => {
+      const vIds = versionIdsBySubmission.get(s.id) ?? [];
+      const findingsCount = vIds.reduce((sum, vid) => sum + (findingsCountByVersion.get(vid) ?? 0), 0);
+      return {
+        id: s.id,
+        title: s.title,
+        author_display_name:
+          memberMap.get(s.author_id)?.display_name ?? "Unknown",
+        created_at: s.created_at,
+        findings_count: findingsCount,
+      };
+    });
 
-  // 6. Build Team Activity — one row per employee
-  const employees = (allMembers ?? []).filter((m) => m.role === "employee");
-
-  const employeeStats: EmployeeStats[] = employees.map((emp) => {
-    const empSubmissions = submissions.filter((s) => s.author_id === emp.user_id);
-
-    // Collect all findings across all submissions
-    const allF = empSubmissions.flatMap((s) => findingsForSubmission(s.id));
-
-    const accepted = allF.filter((f) => f.decision === "accepted").length;
-    const rejected = allF.filter((f) => f.decision === "rejected").length;
-
-    // Repeated mistakes: rule_codes that appear in findings of 2+ different submissions
-    const ruleCodeToSubmissionIds = new Map<string, Set<string>>();
-    for (const sub of empSubmissions) {
-      const subFindings = findingsForSubmission(sub.id);
-      for (const f of subFindings) {
-        const code = f.rule_code;
-        if (!code || code === "TERM") continue;
-        const set = ruleCodeToSubmissionIds.get(code) ?? new Set<string>();
-        set.add(sub.id);
-        ruleCodeToSubmissionIds.set(code, set);
-      }
-    }
-    const repeatedMistakes = [...ruleCodeToSubmissionIds.values()].filter(
-      (s) => s.size >= 2,
-    ).length;
-
-    return {
-      user_id: emp.user_id,
-      display_name: emp.display_name ?? "Unknown",
-      submissions: empSubmissions.length,
-      total_findings: allF.length,
-      accepted,
-      rejected,
-      repeated_mistakes: repeatedMistakes,
-    };
-  });
-
-  // Sort by submissions descending
-  employeeStats.sort((a, b) => b.submissions - a.submissions);
+  // 6. Build Team Activity according to Round 3 definitions
+  const employeeStats: TeamActivityRow[] = calculateTeamActivity(
+    allMembers ?? [],
+    submissions,
+    allVersions,
+    allFindings,
+  );
 
   return {
     inReviewCount,
@@ -403,7 +363,7 @@ async function DashboardContent() {
           {employeeStats.length === 0 ? (
             <EmptyState
               icon={<Users className="h-8 w-8" />}
-              heading="No employee activity yet"
+              heading="No team activity yet"
               body="Share the company join code with your teammates so they can join and start submitting content."
               action={
                 <Button asChild size="sm">
@@ -417,13 +377,17 @@ async function DashboardContent() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-muted/60 text-muted-foreground border-b text-xs uppercase tracking-wider">
                     <tr>
-                      <th scope="col" className="px-5 py-3 font-semibold">Employee</th>
-                      <th scope="col" className="px-5 py-3 font-semibold text-center w-32">Submissions</th>
-                      <th scope="col" className="px-5 py-3 font-semibold text-center w-32">Total findings</th>
-                      <th scope="col" className="px-5 py-3 font-semibold text-center w-28">Accepted</th>
-                      <th scope="col" className="px-5 py-3 font-semibold text-center w-28">Rejected</th>
+                      <th scope="col" className="px-5 py-3 font-semibold">Member</th>
+                      <th scope="col" className="px-5 py-3 font-semibold text-center w-28">Role</th>
+                      <th scope="col" className="px-5 py-3 font-semibold text-center w-28">Submissions</th>
+                      <th scope="col" className="px-5 py-3 font-semibold text-center w-32">
+                        <span title="Findings in the first version of each submission">Total findings</span>
+                      </th>
+                      <th scope="col" className="px-5 py-3 font-semibold text-center w-24">Accepted</th>
+                      <th scope="col" className="px-5 py-3 font-semibold text-center w-24">Edited</th>
+                      <th scope="col" className="px-5 py-3 font-semibold text-center w-24">Rejected</th>
                       <th scope="col" className="px-5 py-3 font-semibold text-center w-40">
-                        <span title="Number of rule codes that appear in findings of two or more of this person's submissions">
+                        <span title="Number of rule codes that appear in the first version of two or more of this person's submissions">
                           Repeated mistakes
                         </span>
                       </th>
@@ -434,6 +398,11 @@ async function DashboardContent() {
                       <tr key={emp.user_id} className="hover:bg-muted/30 transition-colors">
                         <td className="px-5 py-4 font-medium text-foreground">
                           {emp.display_name}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className="text-xs px-2 py-0.5 rounded-full capitalize bg-muted font-medium text-muted-foreground">
+                            {emp.role.replace("_", " ")}
+                          </span>
                         </td>
                         <td className="px-5 py-4 text-center text-muted-foreground">
                           {emp.submissions}
@@ -446,6 +415,16 @@ async function DashboardContent() {
                             <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400 font-medium">
                               <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                               {emp.accepted}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          {emp.edited > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400 font-medium">
+                              <Edit3 className="h-3 w-3" aria-hidden="true" />
+                              {emp.edited}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">0</span>
@@ -481,19 +460,22 @@ async function DashboardContent() {
         </section>
       )}
 
-      {/* ── Quick Links (employer only) ── */}
-      {isEmployer && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            Quick links
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            <QuickLink href="/company/guidelines" icon={<BookOpen className="h-4 w-4" />} label="Guidelines" />
-            <QuickLink href="/company/members" icon={<Users className="h-4 w-4" />} label="Members" />
-            <QuickLink href="/company/audit" icon={<History className="h-4 w-4" />} label="Audit trail" />
-          </div>
-        </section>
-      )}
+      {/* ── Quick Links ── */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+          Quick links
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          <QuickLink href="/dashboard/insights" icon={<BarChart3 className="h-4 w-4" />} label="Insights" />
+          {isEmployer && (
+            <>
+              <QuickLink href="/company/guidelines" icon={<BookOpen className="h-4 w-4" />} label="Guidelines" />
+              <QuickLink href="/company/members" icon={<Users className="h-4 w-4" />} label="Members" />
+              <QuickLink href="/company/audit" icon={<History className="h-4 w-4" />} label="Audit trail" />
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

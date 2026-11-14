@@ -17,13 +17,23 @@ import {
 
 interface ReviewDetailsProps {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ aiStatus?: string }>;
+  searchParams?: Promise<{ aiStatus?: string; retrieval?: string }>;
 }
 
 async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps) {
   const { id } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const aiStatus = resolvedSearchParams?.aiStatus;
+  const retrieval = resolvedSearchParams?.retrieval;
+
+  let initialRetrieval = null;
+  if (retrieval) {
+    try {
+      initialRetrieval = JSON.parse(decodeURIComponent(retrieval));
+    } catch {
+      // ignore parsing error
+    }
+  }
   const user = await requireUser();
   const admin = createAdminClient();
 
@@ -178,6 +188,7 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
           ? 'unavailable'
           : 'unknown'
       }
+      initialRetrieval={initialRetrieval}
     />
   );
 }

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "nw-post-01",
+    "text": "Our lightweight ridge jacket is fully waterproof with a tested 5,000 mm hydrostatic head rating.",
+    "rule_code": "R-001",
+    "expected": [
+      {
+        "rule_code": "R-001",
+        "quoted_text": "waterproof"
+      }
+    ],
+    "note": "Cites R-001: Only garments with a tested hydrostatic head rating of 10,000 mm or higher may be described as waterproof (5,000 mm is water-resistant)."
+  },
+  {
+    "id": "nw-post-02",
+    "text": "The new Northwind Alpine Apex climbing harness guarantees zero fall impact force on lead falls.",
+    "rule_code": "R-010",
+    "expected": [
+      {
+        "rule_code": "R-010",
+        "quoted_text": "fall impact force"
+      }
+    ],
+    "note": "Cites R-010: Climbing harness fall arrest ratings and dynamic load limits require safety board sign-off."
+  },
+  {
+    "id": "nw-post-03",
+    "text": "Carry our new avalanche transceiver into the backcountry and guarantee 100% survival on any slope.",
+    "rule_code": "R-015",
+    "expected": [
+      {
+        "rule_code": "R-015",
+        "quoted_text": "guarantee 100% survival"
+      }
+    ],
+    "note": "Cites R-015: Avalanche rescue beacons must never be advertised as survival guarantees; rescue training disclaimers are mandatory."
+  },
+  {
+    "id": "nw-post-04",
+    "text": "Our storm shells feature a revolutionary 100% chemical-free and toxin-free water repelling treatment.",
+    "rule_code": "R-026",
+    "expected": [
+      {
+        "rule_code": "R-026",
+        "quoted_text": "chemical-free"
+      }
+    ],
+    "note": "Cites R-026: Use PFC-free DWR or PFAS-free DWR; avoid unscientific phrases like chemical-free or toxin-free."
+  },
+  {
+    "id": "nw-post-05",
+    "text": "The Northwind Lifetime Warranty covers free repairs forever, even if your dog chews the strap.",
+    "rule_code": "R-035",
+    "expected": [
+      {
+        "rule_code": "R-035",
+        "quoted_text": "free repairs forever"
+      }
+    ],
+    "note": "Cites R-035: Lifetime warranty must cite practical product lifespan and exclude ordinary animal damage or wear and tear."
+  },
+  {
+    "id": "nw-post-06",
+    "text": "Our handmade camp storage container is completely bear-proof and meets all National Park regulations.",
+    "rule_code": "R-048",
+    "expected": [
+      {
+        "rule_code": "R-048",
+        "quoted_text": "bear-proof"
+      }
+    ],
+    "note": "Cites R-048: Must confirm IGBC (Interagency Grizzly Bear Committee) certification before claiming compliance with park bear regulations."
+  },
+  {
+    "id": "nw-post-07",
+    "text": "Flash sale: Take 60% off all expedition hardshells today, plus we match any competitor price!",
+    "rule_code": "R-063",
+    "expected": [
+      {
+        "rule_code": "R-063",
+        "quoted_text": "60% off"
+      }
+    ],
+    "note": "Cites R-063: Deep discounts exceeding 40% off and price-matching guarantees require commercial lead review."
+  },
+  {
+    "id": "nw-post-08",
+    "text": "Loving this mountain sunrise with my Northwind backpack! Check out the link in bio to shop. (No disclosure tag)",
+    "rule_code": "R-073",
+    "expected": [
+      {
+        "rule_code": "R-073",
+        "quoted_text": "Check out the link in bio to shop"
+      }
+    ],
+    "note": "Cites R-073: Sponsored ambassador partnerships must prominently include unhidden disclosures such as #ad at the start of caption text."
+  },
+  {
+    "id": "nw-post-09",
+    "text": "Wear our Arctic Bivvy Parka and you will be completely immune to frostbite and hypothermia in any blizzard.",
+    "rule_code": "R-085",
+    "expected": [
+      {
+        "rule_code": "R-085",
+        "quoted_text": "immune to frostbite and hypothermia"
+      }
+    ],
+    "note": "Cites R-085: Winter garments must not claim to prevent frostbite or hypothermia under any extreme weather condition."
+  },
+  {
+    "id": "nw-post-10",
+    "text": "Gear up for alpine climbing this season with our lightweight gear. #northwindoutdoor #mountaineering #trekking",
+    "rule_code": "R-109",
+    "expected": [
+      {
+        "rule_code": "R-109",
+        "quoted_text": "#northwindoutdoor"
+      }
+    ],
+    "note": "Cites R-109: Multi-word hashtags must be written in CamelCase (e.g. #NorthwindOutdoor) for screen reader accessibility."
+  }
+]

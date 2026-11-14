@@ -3,6 +3,7 @@ import type { RuleInput, TermInput } from './ruleChecks';
 import { aiReview } from './aiReview';
 import type { RuleItem, FactItem } from './aiReview';
 import type { Finding } from '../types';
+import { retrieveKit, type RetrievalStats } from '../retrieval/retrieve';
 
 export interface BrandKit {
   rules?: (RuleItem & RuleInput)[];
@@ -13,6 +14,7 @@ export interface BrandKit {
 export interface ReviewResult {
   findings: Finding[];
   aiStatus: 'ok' | 'unavailable';
+  retrieval?: RetrievalStats;
 }
 
 const SEVERITY_ORDER: Record<Finding['severity'], number> = {
@@ -34,19 +36,26 @@ export async function reviewWithKit(
     facts,
   });
 
-  // 3. Merge: if an AI finding and a rule check finding have the same quoted_text and rule_code, keep the rule check one
+  // 3. Merge: if an AI finding and a rule check finding have the same quoted_text and rule_code (case-insensitive), keep the rule check one
   const ruleCheckKeys = new Set(
-    ruleFindings.map((f) => `${f.quoted_text}::${f.rule_code}`),
+    ruleFindings.map((f) => `${f.quoted_text}::${f.rule_code.trim().toUpperCase()}`),
   );
 
-  const mergedFindings: Finding[] = [...ruleFindings];
+  const mergedFindings: Finding[] = ruleFindings.map((f) => ({
+    ...f,
+    rule_code: f.rule_code.trim().toUpperCase(),
+  }));
   const seenAiKeys = new Set<string>();
 
   for (const aiFinding of aiFindings) {
-    const key = `${aiFinding.quoted_text}::${aiFinding.rule_code}`;
+    const upperCode = aiFinding.rule_code.trim().toUpperCase();
+    const key = `${aiFinding.quoted_text}::${upperCode}`;
     if (!ruleCheckKeys.has(key) && !seenAiKeys.has(key)) {
       seenAiKeys.add(key);
-      mergedFindings.push(aiFinding);
+      mergedFindings.push({
+        ...aiFinding,
+        rule_code: upperCode,
+      });
     }
   }
 
@@ -67,28 +76,16 @@ export async function runReview(
   companyId: string,
   text: string,
 ): Promise<ReviewResult> {
-  const { createAdminClient } = await import('@/lib/supabase/admin');
-  const supabase = createAdminClient();
+  const { rules, facts, terms, stats } = await retrieveKit(companyId, text);
 
-  const [rulesRes, factsRes, termsRes] = await Promise.all([
-    supabase.from('rules').select('*').eq('company_id', companyId),
-    supabase.from('facts').select('*').eq('company_id', companyId),
-    supabase.from('terms').select('*').eq('company_id', companyId),
-  ]);
+  const reviewResult = await reviewWithKit(text, {
+    rules: rules as (RuleItem & RuleInput)[],
+    facts: facts as FactItem[],
+    terms: terms as TermInput[],
+  });
 
-  if (rulesRes.error) {
-    console.error('Failed to load rules in runReview:', rulesRes.error);
-  }
-  if (factsRes.error) {
-    console.error('Failed to load facts in runReview:', factsRes.error);
-  }
-  if (termsRes.error) {
-    console.error('Failed to load terms in runReview:', termsRes.error);
-  }
-
-  const rules = (rulesRes.data ?? []) as (RuleItem & RuleInput)[];
-  const facts = (factsRes.data ?? []) as FactItem[];
-  const terms = (termsRes.data ?? []) as TermInput[];
-
-  return reviewWithKit(text, { rules, facts, terms });
+  return {
+    ...reviewResult,
+    retrieval: stats,
+  };
 }
