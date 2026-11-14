@@ -1,4 +1,5 @@
 import type { Finding } from '../types';
+import { safeSuggestion } from './safeSuggestion';
 
 export interface RuleInput {
   code?: string;
@@ -95,21 +96,22 @@ export function ruleChecks(
     }
   }
 
-  // 2. Absolute claims: phrases best, world's best, number one, #1, guaranteed, 100%, never fails, miracle
+  // 2. Absolute claims: phrases best, world's best, number one, #1, guaranteed, 100 percent, 100%, never fails, miracle
   const claimsRule = rules.find(
     (r) => (r.category ?? '').toLowerCase() === 'claims',
   );
   const claimsRuleCode = claimsRule?.code || claimsRule?.rule_code || 'CLAIMS';
 
+  const claimSuggestion = 'Remove this claim, or support it with an approved fact.';
   const claimPatterns: Array<{ pattern: RegExp; suggestion: string }> = [
-    { pattern: /\bworld['’]s\s+best\b/gi, suggestion: 'industry-leading' },
-    { pattern: /\bnever\s+fails\b/gi, suggestion: 'is highly dependable' },
-    { pattern: /\bnumber\s+one\b/gi, suggestion: 'leading' },
-    { pattern: /(?:^|(?<=\W))#1\b/gi, suggestion: 'top-rated' },
-    { pattern: /\b100%/gi, suggestion: 'consistently' },
-    { pattern: /\bguaranteed\b/gi, suggestion: 'designed to provide' },
-    { pattern: /\bmiracle\b/gi, suggestion: 'breakthrough' },
-    { pattern: /\bbest\b/gi, suggestion: 'leading' },
+    { pattern: /\bworld['’]s\s+best\b/gi, suggestion: claimSuggestion },
+    { pattern: /\bnever\s+fails\b/gi, suggestion: claimSuggestion },
+    { pattern: /\bnumber\s+one\b/gi, suggestion: claimSuggestion },
+    { pattern: /(?:^|(?<=\W))#1\b/gi, suggestion: claimSuggestion },
+    { pattern: /\b100\s*%(?!\w)|\b100\s*percent\b/gi, suggestion: claimSuggestion },
+    { pattern: /\bguaranteed\b/gi, suggestion: claimSuggestion },
+    { pattern: /\bmiracle\b/gi, suggestion: claimSuggestion },
+    { pattern: /\bbest\b/gi, suggestion: claimSuggestion },
   ];
 
   const claimSpans: Array<[number, number]> = [];
@@ -137,7 +139,7 @@ export function ruleChecks(
         quoted_text: quoted,
         explanation: `Avoid absolute claims like "${quoted}"; use softer, substantiated language.`,
         rule_code: claimsRuleCode,
-        suggestion: preserveCase(quoted, suggestion),
+        suggestion: safeSuggestion(suggestion),
         confidence: 0.9,
         source: 'rule_check',
       });
@@ -203,7 +205,10 @@ export function ruleChecks(
     const key = `${finding.quoted_text}::${finding.rule_code}`;
     if (!seen.has(key)) {
       seen.add(key);
-      uniqueFindings.push(finding);
+      uniqueFindings.push({
+        ...finding,
+        suggestion: safeSuggestion(finding.suggestion),
+      });
     }
   }
 
