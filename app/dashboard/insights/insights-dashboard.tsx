@@ -31,6 +31,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiBadge } from "@/components/ai-badge";
+  TrendingDown,
+  TrendingUp,
+  FileText,
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type {
   BrokenRule,
   RepeatMistakeStat,
@@ -62,6 +68,7 @@ interface InsightsDashboardProps {
   companyId: string;
   role: string;
   isEmployer: boolean;
+  role: string;
   brokenRules: BrokenRule[];
   repeatStats: RepeatMistakeStat[];
   rejectionRatesData: RuleRejectionRate[];
@@ -205,6 +212,7 @@ export function InsightsDashboardClient({
   // Rules with at least 5 decided findings (for Card C)
   const eligibleRejectionRules = rejectionRatesData.filter((r) => r.decided >= 5);
   const flaggedUnclearCount = unclearRules.length;
+  const unclearRules = eligibleRejectionRules.filter((r) => r.possibly_unclear);
 
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full p-6 md:p-8 space-y-8">

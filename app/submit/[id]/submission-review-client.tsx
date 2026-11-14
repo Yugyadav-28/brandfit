@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { AiBadge } from '@/components/ai-badge';
 import { Button } from '@/components/ui/button';
+import type { RetrievalStats } from '@/lib/retrieval/retrieve';
 import {
   AlertTriangle,
   CheckCircle,
@@ -73,7 +74,27 @@ export interface VersionData {
   created_at: string;
 }
 
-interface SubmissionReviewClientProps {
+export interface ReviewResultData {
+  findings?: FindingItem[];
+  aiStatus?: string;
+  retrieval?: RetrievalStats | null;
+}
+
+export function getRetrievalLine(stats?: RetrievalStats | null): string | null {
+  if (!stats || !stats.mode) return null;
+  if (stats.mode === 'retrieved') {
+    return `Checked against ${stats.usedRules} of ${stats.totalRules} rules and ${stats.usedFacts} of ${stats.totalFacts} facts (retrieval)`;
+  }
+  if (stats.mode === 'all') {
+    return 'Checked against all rules and facts';
+  }
+  if (stats.mode === 'fallback') {
+    return 'Retrieval was unavailable, so a reduced set of rules was used';
+  }
+  return null;
+}
+
+export interface SubmissionReviewClientProps {
   submission: SubmissionData;
   initialVersions: VersionData[];
   initialFindings: FindingItem[];
@@ -82,6 +103,9 @@ interface SubmissionReviewClientProps {
   terms: TermItem[];
   initialAiStatus: 'ok' | 'unavailable' | 'unknown';
   reviewerFeedbackNote?: string | null;
+  reviewResult?: ReviewResultData | null;
+  retrieval?: RetrievalStats | null;
+  initialRetrieval?: RetrievalStats | null;
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -172,6 +196,9 @@ export function SubmissionReviewClient({
   terms,
   initialAiStatus,
   reviewerFeedbackNote,
+  reviewResult,
+  retrieval,
+  initialRetrieval,
 }: SubmissionReviewClientProps) {
   const [versions, setVersions] = useState<VersionData[]>(() => {
     return [...initialVersions].sort((a, b) => b.version_no - a.version_no);
@@ -188,6 +215,17 @@ export function SubmissionReviewClient({
   const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable' | 'unknown'>(
     initialAiStatus,
   );
+  const [retrievalStats, setRetrievalStats] = useState<RetrievalStats | null>(
+    () => reviewResult?.retrieval ?? retrieval ?? initialRetrieval ?? null,
+  );
+
+  useEffect(() => {
+    if (reviewResult?.retrieval) {
+      setRetrievalStats(reviewResult.retrieval);
+    } else if (retrieval) {
+      setRetrievalStats(retrieval);
+    }
+  }, [reviewResult?.retrieval, retrieval]);
 
   // Async process flags
   const [isRechecking, setIsRechecking] = useState(false);
@@ -533,6 +571,9 @@ export function SubmissionReviewClient({
           ? 'unavailable'
           : 'unknown',
       );
+      if (revData.retrieval) {
+        setRetrievalStats(revData.retrieval);
+      }
       setSubmissionStatus('draft');
       setSuccessMessage(
         `Review check complete with ${newFindings.length} issue(s) flagged.`,
@@ -1202,6 +1243,11 @@ export function SubmissionReviewClient({
                 </div>
               );
             })
+          )}
+          {getRetrievalLine(retrievalStats) && (
+            <p className="text-xs text-muted-foreground pt-1">
+              {getRetrievalLine(retrievalStats)}
+            </p>
           )}
         </div>
       </div>

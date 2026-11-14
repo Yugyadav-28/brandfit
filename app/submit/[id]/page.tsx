@@ -15,12 +15,21 @@ import { Button } from '@/components/ui/button';
 
 interface ContentProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ aiStatus?: string }>;
+  searchParams: Promise<{ aiStatus?: string; retrieval?: string }>;
 }
 
 async function ReviewContent({ params, searchParams }: ContentProps) {
   const { id } = await params;
-  const { aiStatus } = await searchParams;
+  const { aiStatus, retrieval } = await searchParams;
+
+  let initialRetrieval = null;
+  if (retrieval) {
+    try {
+      initialRetrieval = JSON.parse(decodeURIComponent(retrieval));
+    } catch {
+      // ignore parsing error
+    }
+  }
 
   const user = await requireUser();
   const admin = createAdminClient();
@@ -127,6 +136,7 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
           ? latestApproval.note || null
           : null
       }
+      initialRetrieval={initialRetrieval}
     />
   );
 }

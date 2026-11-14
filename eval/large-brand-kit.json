@@ -1,0 +1,981 @@
+{
+  "company": "Northwind Outdoor",
+  "rules": [
+    {
+      "code": "R-001",
+      "category": "claims",
+      "title": "Waterproof rating specification",
+      "body": "Only describe jackets as waterproof if they have a tested hydrostatic head rating of 10,000 mm or higher. For lower ratings use water-resistant."
+    },
+    {
+      "code": "R-002",
+      "category": "claims",
+      "title": "No 100% waterproof promises",
+      "body": "Never promise 100% waterproof protection in prolonged extreme downpours or continuous submersion."
+    },
+    {
+      "code": "R-003",
+      "category": "claims",
+      "title": "Stormproof terminology",
+      "body": "The term stormproof may only be applied to technical 3-layer hardshells featuring fully taped seams and storm flaps."
+    },
+    {
+      "code": "R-004",
+      "category": "claims",
+      "title": "Breathability ratings",
+      "body": "State breathability using precise MVTR (Moisture Vapor Transmission Rate) numbers (e.g., 20,000 g/m²/24h) rather than vague terms like fully breathable."
+    },
+    {
+      "code": "R-005",
+      "category": "claims",
+      "title": "DWR coating longevity",
+      "body": "Explain that Durable Water Repellent (DWR) requires periodic reapplication; do not imply DWR treatments last forever."
+    },
+    {
+      "code": "R-006",
+      "category": "terminology",
+      "title": "Water resistance vs waterproof",
+      "body": "Clearly distinguish water resistance (repelling light spray) from waterproof construction (impermeable barrier with taped seams)."
+    },
+    {
+      "code": "R-007",
+      "category": "claims",
+      "title": "Windproof rating criteria",
+      "body": "Claims of 100% windproof must be verified with CFM (Cubic Feet per Minute) air permeability ratings under 1 CFM."
+    },
+    {
+      "code": "R-008",
+      "category": "claims",
+      "title": "Seam sealing transparency",
+      "body": "Differentiate between critically taped seams and fully taped seams in all garment descriptions."
+    },
+    {
+      "code": "R-009",
+      "category": "claims",
+      "title": "Dry bag submersion limits",
+      "body": "State clearly that Northwind roll-top dry bags are intended for splash and quick submersion, not deep diving or prolonged underwater storage."
+    },
+    {
+      "code": "R-010",
+      "category": "claims",
+      "title": "Climbing harness fall arrest ratings",
+      "body": "Any statement concerning fall arrest ratings, dynamic load limits, or UIAA certification for climbing harnesses must be verified and signed off by the safety review board.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-011",
+      "category": "claims",
+      "title": "Footwear waterproof lining",
+      "body": "Only shoes equipped with our NorthShield membrane may be marketed as waterproof hiking boots."
+    },
+    {
+      "code": "R-012",
+      "category": "claims",
+      "title": "Tent storm resistance claims",
+      "body": "Specify the Beaufort scale wind rating when claiming expedition tents withstand mountain storms."
+    },
+    {
+      "code": "R-013",
+      "category": "claims",
+      "title": "UIAA and CE compliance references",
+      "body": "Always state the exact UIAA or CE standard number (e.g., EN 12277) when referencing climbing safety certifications."
+    },
+    {
+      "code": "R-014",
+      "category": "tone",
+      "title": "Responsible risk depiction",
+      "body": "Depict outdoor activities with proper safety precautions, helmets, and buddy systems rather than reckless stunt behavior."
+    },
+    {
+      "code": "R-015",
+      "category": "claims",
+      "title": "Avalanche rescue gear limitations",
+      "body": "Safety beacons and probes must never be advertised as guarantees of avalanche survival; companion rescue training disclaimers are legally mandatory.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-016",
+      "category": "terminology",
+      "title": "Carabiner gate action terms",
+      "body": "Use precise technical terms (screwgate, twistlock, wiregate) and never generic terms like clip or clasp."
+    },
+    {
+      "code": "R-017",
+      "category": "claims",
+      "title": "Rope elongation specifications",
+      "body": "Always report both static elongation and first-fall dynamic elongation for all dynamic climbing ropes."
+    },
+    {
+      "code": "R-018",
+      "category": "claims",
+      "title": "Ice axe usage boundaries",
+      "body": "Distinguish classic mountaineering walking axes from aggressive curved technical ice tools for vertical ice."
+    },
+    {
+      "code": "R-019",
+      "category": "claims",
+      "title": "Crampon boot compatibility warning",
+      "body": "Include a notice specifying whether crampons require heel and toe welts (automatic/semi-automatic) or fit flexible trekking boots (strap-on)."
+    },
+    {
+      "code": "R-020",
+      "category": "claims",
+      "title": "Via ferrata lanyard energy absorbers",
+      "body": "State explicitly that via ferrata sets are rated for specific user weight ranges (40 kg to 120 kg including gear)."
+    },
+    {
+      "code": "R-021",
+      "category": "tone",
+      "title": "Trail etiquette and leave no trace",
+      "body": "Reinforce Leave No Trace (LNT) principles in trail guides, gear maintenance articles, and social posts."
+    },
+    {
+      "code": "R-022",
+      "category": "claims",
+      "title": "Helmet impact retirement rule",
+      "body": "Must emphasize that any climbing or ski helmet subjected to a major rockfall or fall impact must be immediately retired, even if damage is not visible.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-023",
+      "category": "terminology",
+      "title": "Belay device operation",
+      "body": "Do not use hands-free or automatic belay; use assisted-braking belay device according to manufacturer specifications."
+    },
+    {
+      "code": "R-024",
+      "category": "claims",
+      "title": "Bouldering crash pad landing zones",
+      "body": "Crash pads must be described as impact attenuators, not injury-prevention guarantees; always advise using attentive spotters."
+    },
+    {
+      "code": "R-025",
+      "category": "claims",
+      "title": "Recycled content percentages",
+      "body": "State the verified percentage of recycled polyester or nylon (e.g., 85% recycled polyester shell) instead of generic eco-friendly."
+    },
+    {
+      "code": "R-026",
+      "category": "terminology",
+      "title": "PFC-free DWR descriptions",
+      "body": "Use PFC-free DWR or PFAS-free DWR; avoid saying chemical-free or toxin-free."
+    },
+    {
+      "code": "R-027",
+      "category": "claims",
+      "title": "Bluesign approved fabrics",
+      "body": "Only apply bluesign approved to products where at least 90% of textile components meet the bluesign standard."
+    },
+    {
+      "code": "R-028",
+      "category": "claims",
+      "title": "Responsible Down Standard (RDS)",
+      "body": "All down insulation statements must cite 100% Responsible Down Standard (RDS) certification and traceability."
+    },
+    {
+      "code": "R-029",
+      "category": "claims",
+      "title": "Fair Trade Certified sewing",
+      "body": "Only garments sewn in Fair Trade Certified facilities may use the Fair Trade Certified sewn badge and claims."
+    },
+    {
+      "code": "R-030",
+      "category": "terminology",
+      "title": "Avoid greenwashing buzzwords",
+      "body": "Never use vague terms such as completely green, nature-positive, or non-polluting without verifiable third-party certification."
+    },
+    {
+      "code": "R-031",
+      "category": "claims",
+      "title": "Microplastic shedding disclosures",
+      "body": "Provide washing bag recommendations (e.g., Guppyfriend) when discussing fleece maintenance to reduce synthetic fiber loss."
+    },
+    {
+      "code": "R-032",
+      "category": "claims",
+      "title": "Organic cotton certification",
+      "body": "Reference Global Organic Textile Standard (GOTS) certification for all organic cotton claims."
+    },
+    {
+      "code": "R-033",
+      "category": "claims",
+      "title": "Repair program priority",
+      "body": "Promote repair and patching over replacement in support of circular economy initiatives."
+    },
+    {
+      "code": "R-034",
+      "category": "claims",
+      "title": "Packaging recyclability claims",
+      "body": "Only claim packaging is recyclable if it is widely accepted in curbside municipal recycling streams."
+    },
+    {
+      "code": "R-035",
+      "category": "claims",
+      "title": "Ironclad lifetime warranty terms",
+      "body": "All formal representations of the Northwind Lifetime Warranty must cite practical product lifespan and exclude ordinary wear-and-tear and UV degradation.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-036",
+      "category": "terminology",
+      "title": "Warranty service terminology",
+      "body": "Use factory repair service rather than free repair forever to maintain accurate customer expectations."
+    },
+    {
+      "code": "R-037",
+      "category": "claims",
+      "title": "Wear and tear exclusions",
+      "body": "Make explicit that crampon punctures, zipper blowouts from overpacking, and campfire ember burns are serviced under paid repair, not manufacturer warranty."
+    },
+    {
+      "code": "R-038",
+      "category": "claims",
+      "title": "Turnaround time for repairs",
+      "body": "Quote repair turnaround as 2 to 3 weeks during peak season; do not promise same-week repairs."
+    },
+    {
+      "code": "R-039",
+      "category": "claims",
+      "title": "Replacement part availability",
+      "body": "Only advertise tent poles, buckles, and zipper sliders as available if currently in stock at the repair hub."
+    },
+    {
+      "code": "R-040",
+      "category": "claims",
+      "title": "Third-party modification impact",
+      "body": "Explain that unauthorized tailoring or re-seaming voids the factory waterproof seam warranty."
+    },
+    {
+      "code": "R-041",
+      "category": "claims",
+      "title": "Original owner limitation",
+      "body": "Specify when warranty coverage is limited to the original purchaser with proof of purchase."
+    },
+    {
+      "code": "R-042",
+      "category": "claims",
+      "title": "Worn Wear trade-in valuations",
+      "body": "Trade-in store credit values must match the published seasonal trade-in matrix exactly."
+    },
+    {
+      "code": "R-043",
+      "category": "tone",
+      "title": "Honest gear lifespan communication",
+      "body": "Acknowledge that ultralight race gear has a shorter operational lifespan than rugged expedition heavyweights."
+    },
+    {
+      "code": "R-044",
+      "category": "claims",
+      "title": "Zipper maintenance guidance",
+      "body": "Advise salt-water rinsing and silicone lubrication when highlighting saltwater resilience on coastal paddling jackets."
+    },
+    {
+      "code": "R-045",
+      "category": "claims",
+      "title": "Backcountry inherent risk disclaimer",
+      "body": "Any instructional backcountry ski or mountaineering article must carry the standard legal assumption-of-risk liability waiver.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-046",
+      "category": "claims",
+      "title": "Navigation equipment advisory",
+      "body": "Advise users to carry a physical topographic map and magnetic compass alongside GPS watches and mobile mapping apps."
+    },
+    {
+      "code": "R-047",
+      "category": "claims",
+      "title": "Water filter pathogen limits",
+      "body": "State whether filters remove bacteria and protozoa only (0.1 micron microfilters) or also neutralize viruses (purifiers)."
+    },
+    {
+      "code": "R-048",
+      "category": "claims",
+      "title": "Bear canister regulation compliance",
+      "body": "Confirm IGBC (Interagency Grizzly Bear Committee) certification before claiming a canister meets National Park regulations."
+    },
+    {
+      "code": "R-049",
+      "category": "claims",
+      "title": "First aid kit readiness disclaimer",
+      "body": "Note that first aid contents require appropriate wilderness medicine training and regular expiration checks."
+    },
+    {
+      "code": "R-050",
+      "category": "claims",
+      "title": "Emergency beacon satellite subscription",
+      "body": "Always disclose that satellite SOS communicators (e.g., inReach, SPOT) require an active paid satellite service plan."
+    },
+    {
+      "code": "R-051",
+      "category": "claims",
+      "title": "Copyright and photography rights",
+      "body": "Ensure all community adventure photography is shared with explicit creator consent and photo credit."
+    },
+    {
+      "code": "R-052",
+      "category": "claims",
+      "title": "Competitor comparative testing disclosure",
+      "body": "Direct comparisons with named competitor products require independent laboratory testing and legal approval before publication.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-053",
+      "category": "terminology",
+      "title": "No trademark disparagement",
+      "body": "Do not use competitor brand names or trademarks pejoratively in marketing copy or social media replies."
+    },
+    {
+      "code": "R-054",
+      "category": "claims",
+      "title": "Drone usage on public lands",
+      "body": "Never showcase aerial footage shot in designated Wilderness Areas or National Parks where drone operations are prohibited."
+    },
+    {
+      "code": "R-055",
+      "category": "claims",
+      "title": "Alpine fit layering clearance",
+      "body": "Explain that Alpine Fit garments are tailored slim to fit under a harness, while Expedition Fit allows multiple insulating layers."
+    },
+    {
+      "code": "R-056",
+      "category": "terminology",
+      "title": "Unisex versus gender-specific fit",
+      "body": "Use gender-inclusive sizing or unisex sizing with dual measurements rather than simply labeling as men's."
+    },
+    {
+      "code": "R-057",
+      "category": "claims",
+      "title": "Boot sizing for downhill hiking",
+      "body": "Recommend leaving a finger-width of clearance in the toe box to prevent bruising during steep descents."
+    },
+    {
+      "code": "R-058",
+      "category": "claims",
+      "title": "Backpack torso length measurement",
+      "body": "Direct customers to measure their torso from the C7 vertebra to the iliac crest, not their overall height."
+    },
+    {
+      "code": "R-059",
+      "category": "claims",
+      "title": "Sleeping bag temperature ratings",
+      "body": "Distinguish ISO/EN Comfort ratings (for women/cold sleepers) from Limit ratings (for men/warm sleepers)."
+    },
+    {
+      "code": "R-060",
+      "category": "claims",
+      "title": "Glove finger dexterity",
+      "body": "Clarify that heavy expedition mittens prioritize warmth over rope handling and dexterity."
+    },
+    {
+      "code": "R-061",
+      "category": "terminology",
+      "title": "Inseam length options",
+      "body": "State regular, short, and long inseam measurements in both inches and centimeters."
+    },
+    {
+      "code": "R-062",
+      "category": "claims",
+      "title": "Helmet sizing head circumference",
+      "body": "Provide head circumference range in centimeters for small/medium and large/xlarge climbing helmets."
+    },
+    {
+      "code": "R-063",
+      "category": "claims",
+      "title": "Price match guarantee and deep discounts",
+      "body": "Promotions advertising discounts greater than 40% off or price match guarantees must be reviewed by the commercial lead.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-064",
+      "category": "claims",
+      "title": "Discount duration transparency",
+      "body": "Every seasonal sale or promotional code must clearly state start date, end date, and time zone."
+    },
+    {
+      "code": "R-065",
+      "category": "claims",
+      "title": "MSRP comparison rules",
+      "body": "Comparative pricing (was/now) must represent genuine historical selling prices within the past 90 days."
+    },
+    {
+      "code": "R-066",
+      "category": "claims",
+      "title": "Coupon code stacking policy",
+      "body": "State whether promo codes may be combined with pro deals, member points, or existing clearance markdowns."
+    },
+    {
+      "code": "R-067",
+      "category": "claims",
+      "title": "Free shipping threshold clarity",
+      "body": "State the exact order value required for free ground shipping (e.g., free shipping on domestic orders over $75)."
+    },
+    {
+      "code": "R-068",
+      "category": "terminology",
+      "title": "Say outlet or clearance, never cheap",
+      "body": "Describe discounted past-season gear as clearance, archive sale, or previous-season stock; never use cheap or bargain-basement."
+    },
+    {
+      "code": "R-069",
+      "category": "claims",
+      "title": "Pro deal confidentiality",
+      "body": "Remind outdoor industry professionals that pro purchase pricing is strictly confidential and not for resale."
+    },
+    {
+      "code": "R-070",
+      "category": "claims",
+      "title": "Final sale liquidation conditions",
+      "body": "Clearance items marked as final sale must prominently disclose that no returns, exchanges, or store credits are permitted.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-071",
+      "category": "claims",
+      "title": "Gift card validity",
+      "body": "Northwind gift cards never expire and do not incur non-use dormancy fees."
+    },
+    {
+      "code": "R-072",
+      "category": "claims",
+      "title": "Member dividend distribution dates",
+      "body": "Specify that annual co-op member dividends are calculated on full-price purchases and distributed each March."
+    },
+    {
+      "code": "R-073",
+      "category": "claims",
+      "title": "Sponsored partnership disclosure",
+      "body": "All creator partnerships must include prominent, unhidden disclosures such as #ad, #paidpartnership, or #NorthwindAmbassador at the beginning of caption text."
+    },
+    {
+      "code": "R-074",
+      "category": "claims",
+      "title": "Gifted product clarity",
+      "body": "Creators receiving complimentary expedition gear must explicitly disclose gifted product in all social videos and posts."
+    },
+    {
+      "code": "R-075",
+      "category": "tone",
+      "title": "Authentic adventure voice",
+      "body": "Ambassadors must share candid, field-tested reflections rather than scripted corporate talking points."
+    },
+    {
+      "code": "R-076",
+      "category": "claims",
+      "title": "Permit compliance for filming",
+      "body": "Ensure commercial filming permits (e.g., USFS, BLM, Parks Canada) are secured before shooting promotional footage on protected public lands."
+    },
+    {
+      "code": "R-077",
+      "category": "claims",
+      "title": "Safety gear in influencer media",
+      "body": "Ambassadors featured in climbing, skiing, or paddling media must visibly model appropriate helmets, PFDs, or beacons."
+    },
+    {
+      "code": "R-078",
+      "category": "tone",
+      "title": "Environmental stewardship emphasis",
+      "body": "Ambassador content should spotlight trail conservation, cleanups, and respect for Indigenous lands."
+    },
+    {
+      "code": "R-079",
+      "category": "terminology",
+      "title": "Ambassador title consistency",
+      "body": "Refer to sponsored athletes as Northwind Athlete Ambassadors or Northwind Field Testers."
+    },
+    {
+      "code": "R-080",
+      "category": "claims",
+      "title": "Affiliate link disclosure",
+      "body": "Disclose that affiliate links generate a commission at no additional cost to the purchaser."
+    },
+    {
+      "code": "R-081",
+      "category": "claims",
+      "title": "Pre-production gear testing disclaimer",
+      "body": "Prototypes showcased in field testing media must carry the label Prototype — specifications may vary upon release."
+    },
+    {
+      "code": "R-082",
+      "category": "tone",
+      "title": "No toxic outdoor elitism",
+      "body": "Welcome beginners and trail enthusiasts of all backgrounds; avoid gatekeeping or condescending mountain-purist language."
+    },
+    {
+      "code": "R-083",
+      "category": "claims",
+      "title": "Sleeping pad R-value insulation",
+      "body": "State sleeping pad insulation according to ASTM F3340-18 R-value testing standards and provide ground condition context."
+    },
+    {
+      "code": "R-084",
+      "category": "claims",
+      "title": "Merino wool temperature regulation",
+      "body": "Explain that merino wool regulates temperature when wet through active evaporative resistance, but is not an impenetrable heat generator."
+    },
+    {
+      "code": "R-085",
+      "category": "claims",
+      "title": "Frostbite and hypothermia warning claims",
+      "body": "Do not claim winter garments prevent frostbite or hypothermia under any extreme meteorological condition without strict medical advisories.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-086",
+      "category": "claims",
+      "title": "Sun protection UPF ratings",
+      "body": "UPF claims must cite standard testing (e.g., UPF 50+ blocks 98% of UVA/UVB rays) and note that wet, stretched fabrics lose protection."
+    },
+    {
+      "code": "R-087",
+      "category": "claims",
+      "title": "Insect shield repellent durability",
+      "body": "State that permethrin insect-repellent fabric treatments remain effective through a maximum of 70 washes."
+    },
+    {
+      "code": "R-088",
+      "category": "claims",
+      "title": "Footwear blister prevention guidance",
+      "body": "Frame blister prevention around proper boot break-in, moisture-wicking sock layering, and early friction hotspot taping."
+    },
+    {
+      "code": "R-089",
+      "category": "claims",
+      "title": "Hydration bladder cleaning and mold",
+      "body": "Provide cleaning and drying instructions for antimicrobial TPU hydration bladders to avoid bacterial contamination."
+    },
+    {
+      "code": "R-090",
+      "category": "claims",
+      "title": "Electrolyte balance advice",
+      "body": "Advise proper hydration balance with electrolytes during high-exertion trail runs, without prescribing medical treatments."
+    },
+    {
+      "code": "R-091",
+      "category": "claims",
+      "title": "Camp stove carbon monoxide hazard",
+      "body": "Prominently warn against using canister or liquid-fuel camp stoves inside enclosed tents due to fatal carbon monoxide poisoning risks."
+    },
+    {
+      "code": "R-092",
+      "category": "claims",
+      "title": "High altitude sickness mitigation",
+      "body": "Never claim clothing or basic equipment treats acute mountain sickness (AMS) or high-altitude pulmonary edema (HAPE); proper acclimatization is required.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-093",
+      "category": "tone",
+      "title": "Grounded and rugged voice",
+      "body": "Use clear, dependable, and field-tested prose. Avoid trendy metropolitan lifestyle jargon that feels disconnected from the trail."
+    },
+    {
+      "code": "R-094",
+      "category": "tone",
+      "title": "No hyperbole or exaggerated claims",
+      "body": "Avoid hyperbolic claims like indestructible, miracle fabric, or legendary unless citing documented independent lab awards."
+    },
+    {
+      "code": "R-095",
+      "category": "tone",
+      "title": "Concise gear descriptions",
+      "body": "Lead with weight, packability, and performance benefits before atmospheric outdoor storytelling."
+    },
+    {
+      "code": "R-096",
+      "category": "tone",
+      "title": "Honest product limitations",
+      "body": "Be transparent about design trade-offs: an ultralight shell trades heavy brush durability for trail speed."
+    },
+    {
+      "code": "R-097",
+      "category": "tone",
+      "title": "Humility toward nature",
+      "body": "Depict nature as a force to respect, learn from, and adapt to, never as something to conquer or dominate."
+    },
+    {
+      "code": "R-098",
+      "category": "tone",
+      "title": "Encouraging tone for newcomers",
+      "body": "Demystify outdoor skills for day hikers and camp novices without talking down to experienced alpinists."
+    },
+    {
+      "code": "R-099",
+      "category": "tone",
+      "title": "Active voice in technical guides",
+      "body": "Use direct, active verbs in instructional copy (e.g., Pitch the tent into the wind, Anchor the guyout lines firmly)."
+    },
+    {
+      "code": "R-100",
+      "category": "tone",
+      "title": "Punctuation restraint",
+      "body": "Limit exclamation points to at most one per post or headline; let the mountain scenery and gear performance inspire the reader."
+    },
+    {
+      "code": "R-101",
+      "category": "tone",
+      "title": "No clickbait headlines",
+      "body": "Write informative, descriptive titles for trail reports and gear breakdowns rather than sensational clickbait."
+    },
+    {
+      "code": "R-102",
+      "category": "tone",
+      "title": "Respect for local mountain communities",
+      "body": "Acknowledge local guide cultures, Sherpa heritage, and Indigenous stewards whenever recounting mountain expeditions."
+    },
+    {
+      "code": "R-103",
+      "category": "terminology",
+      "title": "Dual metric and imperial units",
+      "body": "Always provide measurements in both metric and imperial units (e.g., 450 g / 15.8 oz, 2,500 m / 8,200 ft)."
+    },
+    {
+      "code": "R-104",
+      "category": "terminology",
+      "title": "Regional gear naming",
+      "body": "Acknowledge regional variations (e.g., trekking poles vs hiking poles, pack vs rucksack, gaiters vs leg protectors)."
+    },
+    {
+      "code": "R-105",
+      "category": "claims",
+      "title": "Extreme hydrostatic head depth ratings",
+      "body": "Claims involving marine drysuits, packraft spraydecks, or immersion gear rated above 25,000 mm hydrostatic head must be approved by technical testing directors.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-106",
+      "category": "terminology",
+      "title": "Sub-zero temperature descriptions",
+      "body": "Specify whether temperatures are Fahrenheit or Celsius to prevent dangerous confusion in sub-zero alpine conditions."
+    },
+    {
+      "code": "R-107",
+      "category": "claims",
+      "title": "Trail difficulty grading systems",
+      "body": "Reference standard Yosemite Decimal System (YDS) or regional equivalent (e.g., Class 1 trail to Class 5 technical climbing)."
+    },
+    {
+      "code": "R-108",
+      "category": "terminology",
+      "title": "Elevation gain versus trail distance",
+      "body": "Clearly separate horizontal distance from cumulative vertical elevation gain in trail overviews."
+    },
+    {
+      "code": "R-109",
+      "category": "accessibility",
+      "title": "CamelCase hashtags for screen readers",
+      "body": "Write multi-word hashtags in CamelCase (e.g., #NorthwindOutdoor, #TrekTheRidge, #LeaveNoTrace) so screen readers pronounce words correctly."
+    },
+    {
+      "code": "R-110",
+      "category": "tone",
+      "title": "Hashtag quantity cap",
+      "body": "Use no more than 3 targeted hashtags per post to avoid clutter and preserve brand dignity."
+    },
+    {
+      "code": "R-111",
+      "category": "tone",
+      "title": "Restrained emoji usage",
+      "body": "Use at most two outdoor-themed emojis (e.g., 🌲, ⛰️) per caption; never replace vital instructional words or warnings with emojis."
+    },
+    {
+      "code": "R-112",
+      "category": "accessibility",
+      "title": "Descriptive image alt text",
+      "body": "All published product and expedition photography must include complete alt text detailing the terrain, gear model, and environmental context."
+    },
+    {
+      "code": "R-113",
+      "category": "accessibility",
+      "title": "Color contrast in gear graphics",
+      "body": "Ensure infographic text and gear diagrams maintain a minimum 4.5:1 contrast ratio against background imagery."
+    },
+    {
+      "code": "R-114",
+      "category": "accessibility",
+      "title": "Descriptive link text",
+      "body": "Never use generic phrases like click here or read more as hyperlink anchors; use specific phrases like Explore the Glacier Ridge 3P tent specs."
+    },
+    {
+      "code": "R-115",
+      "category": "visual",
+      "title": "Official brand color palette",
+      "body": "Use only Northwind primary colors: Evergreen (#1B4332), Slate Granite (#343A40), Snow White (#F8F9FA), and Alpine Sun Gold (#DDA15E)."
+    },
+    {
+      "code": "R-116",
+      "category": "visual",
+      "title": "Logo clear space requirements",
+      "body": "Maintain a minimum clear space surrounding the Northwind mountain compass emblem equal to the height of the letter N."
+    },
+    {
+      "code": "R-117",
+      "category": "visual",
+      "title": "No photographic color filters",
+      "body": "Keep landscape and expedition photography natural; do not apply oversaturated vintage filters that distort actual fabric colors."
+    },
+    {
+      "code": "R-118",
+      "category": "claims",
+      "title": "Zero-landfill and net-zero carbon claims",
+      "body": "All public statements concerning corporate carbon neutrality or zero-waste facility certification must be validated by the environmental audit council.",
+      "needs_escalation": true
+    },
+    {
+      "code": "R-119",
+      "category": "visual",
+      "title": "Video captions and subtitling",
+      "body": "All video reviews, how-to guides, and reels must include open or closed captions for hearing-impaired audiences."
+    },
+    {
+      "code": "R-120",
+      "category": "facts",
+      "title": "Approved technical specification citation",
+      "body": "Every published technical metric (weight, pack volume, fabric denier, tear strength) must match the approved engineering specification sheet exactly."
+    }
+  ],
+  "facts": [
+    {
+      "code": "F-001",
+      "statement": "Northwind Outdoor was founded in 1984 in Bozeman, Montana.",
+      "source": "Corporate History Archive"
+    },
+    {
+      "code": "F-002",
+      "statement": "Northwind Glacier Ridge 3-layer jackets feature a verified 28,000 mm hydrostatic head rating.",
+      "source": "Textile Lab Test Report #2026-TR"
+    },
+    {
+      "code": "F-003",
+      "statement": "All Northwind down jackets use 100% Responsible Down Standard (RDS) certified 800-fill goose down.",
+      "source": "Supply Chain Audit 2026"
+    },
+    {
+      "code": "F-004",
+      "statement": "The Northwind Alpine Apex climbing harness holds UIAA 105 and CE EN 12277 Type C certifications.",
+      "source": "UIAA Safety Certificate 2025-H84"
+    },
+    {
+      "code": "F-005",
+      "statement": "Northwind operates 35 dedicated retail stores across the United States and Canada.",
+      "source": "Retail Operations Report, Q3 2026"
+    },
+    {
+      "code": "F-006",
+      "statement": "Over 85% of synthetic fabrics across the Northwind line are woven from certified post-consumer recycled yarns.",
+      "source": "Annual Sustainability Review 2026"
+    },
+    {
+      "code": "F-007",
+      "statement": "The Glacier Ridge hardshell weighs exactly 415 grams (14.6 oz) in men's size medium.",
+      "source": "Product Engineering Spec Sheet"
+    },
+    {
+      "code": "F-008",
+      "statement": "Northwind roll-top dry bags use 420D TPU-laminated ripstop nylon with welded RF seams.",
+      "source": "Gear Materials Datasheet"
+    },
+    {
+      "code": "F-009",
+      "statement": "The Northwind Lifetime Guarantee covers manufacturing defects for the practical lifespan of the product.",
+      "source": "Warranty Policy Handbook 2026"
+    },
+    {
+      "code": "F-010",
+      "statement": "Northwind offers free standard ground shipping on all domestic orders totaling $75 or more.",
+      "source": "Customer Service Fulfillment Guide"
+    },
+    {
+      "code": "F-011",
+      "statement": "The Northwind Sierra Trekker 55 backpack features an adjustable torso range from 16 to 22 inches (41 to 56 cm).",
+      "source": "Backpack Fit Manual"
+    },
+    {
+      "code": "F-012",
+      "statement": "Northwind tents use silicone/PU coated 20D ripstop nylon with a 1,200 mm floor waterproof rating.",
+      "source": "Tent Construction Standards 2026"
+    },
+    {
+      "code": "F-013",
+      "statement": "Northwind sleeping pads are tested under ASTM F3340-18 and achieve an R-value rating of 4.8.",
+      "source": "Thermal Testing Institute Report #992"
+    },
+    {
+      "code": "F-014",
+      "statement": "Northwind transitioned 100% of its waterproof outerwear line to PFC-free DWR finishes in 2024.",
+      "source": "Environmental Transition Summary"
+    },
+    {
+      "code": "F-015",
+      "statement": "The Northwind Summit Guard mountaineering helmet is certified under EN 12492 and UIAA 106.",
+      "source": "Safety Testing Certification Lab"
+    },
+    {
+      "code": "F-016",
+      "statement": "Northwind repaired over 14,000 garments and packs at its Bozeman Repair Hub in 2025.",
+      "source": "Worn & Returned Sustainability Report"
+    },
+    {
+      "code": "F-017",
+      "statement": "The Northwind Arctic Bivvy sleeping bag is ISO 23537 tested with an EN Comfort rating of -10°C (14°F).",
+      "source": "Thermal Chamber Test Certification"
+    },
+    {
+      "code": "F-018",
+      "statement": "Northwind dynamic climbing ropes feature a 9.5 mm diameter and a certified impact force of 8.2 kN.",
+      "source": "Rope Technical Specifications Sheet"
+    },
+    {
+      "code": "F-019",
+      "statement": "Northwind Merino 200 base layers are crafted from 100% non-mulesed merino wool sourced from New Zealand.",
+      "source": "Wool Sourcing Transparency Ledger"
+    },
+    {
+      "code": "F-020",
+      "statement": "The Northwind TrailFlow water microfilter removes 99.9999% of waterborne bacteria and 99.9% of protozoan cysts.",
+      "source": "EPA Microbiological Water Purifier Test"
+    },
+    {
+      "code": "F-021",
+      "statement": "Northwind is a certified 1% for the Planet member, donating 1% of total annual sales to grassroots trail preservation.",
+      "source": "1% for the Planet Partner Registry"
+    },
+    {
+      "code": "F-022",
+      "statement": "The Northwind Campfire Kettle is crafted from hard-anodized food-grade aluminum and holds 1.2 liters.",
+      "source": "Camp Kitchen Spec Sheet"
+    },
+    {
+      "code": "F-023",
+      "statement": "Northwind hiking socks carry an unconditional lifetime guarantee against friction wear-through.",
+      "source": "Sock Program Warranty Clause"
+    },
+    {
+      "code": "F-024",
+      "statement": "The Northwind BearLock food container is certified bear-resistant by the Interagency Grizzly Bear Committee (IGBC #5420).",
+      "source": "IGBC Certified Products List"
+    },
+    {
+      "code": "F-025",
+      "statement": "Northwind WindBlocker softshells deliver a laboratory air permeability rating under 0.5 CFM.",
+      "source": "Textile Wind Testing Lab"
+    },
+    {
+      "code": "F-026",
+      "statement": "All Northwind cardboard packaging boxes are made from 100% post-consumer recycled paperboard and printed with soy ink.",
+      "source": "Packaging Materials Spec"
+    },
+    {
+      "code": "F-027",
+      "statement": "The Northwind StormTrack mountaineering tent is tested to withstand sustained winds up to 90 km/h (56 mph).",
+      "source": "Wind Tunnel Field Test Results"
+    },
+    {
+      "code": "F-028",
+      "statement": "Northwind Pro Deal purchasing is restricted to verified wilderness guides, SAR personnel, and certified outdoor educators.",
+      "source": "Industry Pro Program Guidelines"
+    },
+    {
+      "code": "F-029",
+      "statement": "Northwind Trekking Poles feature double-cam FlickLock adjusters crafted from aircraft-grade 7075 aluminum.",
+      "source": "Hardware Materials Spec"
+    },
+    {
+      "code": "F-030",
+      "statement": "Annual member dividends are credited on March 15th for the previous calendar year full-price purchases.",
+      "source": "Co-op Bylaws & Membership Agreement"
+    },
+    {
+      "code": "F-031",
+      "statement": "Northwind solar chargers feature 24% high-efficiency monocrystalline cells with dual USB-C PD outputs.",
+      "source": "Electronics Engineering Datasheet"
+    },
+    {
+      "code": "F-032",
+      "statement": "The Northwind AltiGrip mountaineering boot sole utilizes Vibram Mont compound formulated for sub-zero traction.",
+      "source": "Vibram Partnership Component Spec"
+    },
+    {
+      "code": "F-033",
+      "statement": "Northwind headlamps carry an IPX8 waterproof rating, submersible up to 1.5 meters for 30 minutes.",
+      "source": "Ingress Protection Certification IPX8"
+    },
+    {
+      "code": "F-034",
+      "statement": "Over 60% of Northwind apparel is assembled in Fair Trade Certified sewing facilities.",
+      "source": "Social Compliance Audit 2026"
+    },
+    {
+      "code": "F-035",
+      "statement": "The Northwind Avalanche Transceiver operates on the international standard 457 kHz frequency with a 50-meter circular search strip.",
+      "source": "Transceiver Technical Manual"
+    },
+    {
+      "code": "F-036",
+      "statement": "Northwind sun hoodies are certified UPF 50+, blocking greater than 98% of harmful ultraviolet radiation.",
+      "source": "AATCC Test Method 183"
+    },
+    {
+      "code": "F-037",
+      "statement": "Northwind packraft hulls are constructed from 210D single-coated urethane nylon with a 840D double-coated floor.",
+      "source": "Paddling Technical Specifications"
+    },
+    {
+      "code": "F-038",
+      "statement": "Northwind factory repair centers maintain original replacement zippers, sliders, and buckles dating back 10 production years.",
+      "source": "Repair Operations Inventory"
+    },
+    {
+      "code": "F-039",
+      "statement": "The Northwind Expedition Duffel features 900D recycled polyester with a weather-resistant TPU film laminate.",
+      "source": "Luggage Durability Spec"
+    },
+    {
+      "code": "F-040",
+      "statement": "Northwind headquarters and Bozeman distribution center operate on 100% locally contracted renewable wind energy.",
+      "source": "Facility Environmental Disclosure 2026"
+    }
+  ],
+  "terms": [
+    {
+      "preferred": "waterproof",
+      "avoid": "100% water-tight, totally water-sealed",
+      "note": "Use waterproof only when adhering to tested 10,000 mm+ hydrostatic ratings"
+    },
+    {
+      "preferred": "clearance",
+      "avoid": "cheap, bargain-basement, dirt-cheap",
+      "note": "Maintain brand prestige by referring to discounted items as clearance or past-season archive"
+    },
+    {
+      "preferred": "post-consumer recycled",
+      "avoid": "eco-friendly, planet-saving, 100% green",
+      "note": "Specify precise recycled content percentages instead of vague green claims"
+    },
+    {
+      "preferred": "trail enthusiasts",
+      "avoid": "weekend warriors, amateurs",
+      "note": "Use inclusive, respectful wording for outdoor hobbyists"
+    },
+    {
+      "preferred": "assisted-braking belay device",
+      "avoid": "hands-free belayer, auto-belay device",
+      "note": "Climbing safety devices still require active brake hand control"
+    },
+    {
+      "preferred": "repair hub",
+      "avoid": "fix-it shop, alteration desk",
+      "note": "Official company terminology for factory restoration and repair centers"
+    },
+    {
+      "preferred": "Northwind Outdoor",
+      "avoid": "NorthWind, northwind, North Wind Outdoors",
+      "note": "Exact corporate name and capitalization"
+    },
+    {
+      "preferred": "PFC-free DWR",
+      "avoid": "chemical-free waterproof, organic coating",
+      "note": "Accurate technical terminology for non-fluorinated Durable Water Repellent"
+    }
+  ]
+}
