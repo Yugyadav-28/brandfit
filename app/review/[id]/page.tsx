@@ -15,10 +15,13 @@ import {
 
 interface ReviewDetailsProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ aiStatus?: string }>;
 }
 
-async function ReviewDetailsContent({ params }: ReviewDetailsProps) {
+async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps) {
   const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const aiStatus = resolvedSearchParams?.aiStatus;
   const user = await requireUser();
   const admin = createAdminClient();
 
@@ -135,6 +138,13 @@ async function ReviewDetailsContent({ params }: ReviewDetailsProps) {
       terms={terms}
       initialComments={enrichedComments}
       initialApprovals={enrichedApprovals}
+      initialAiStatus={
+        aiStatus === 'ok'
+          ? 'ok'
+          : aiStatus === 'unavailable'
+          ? 'unavailable'
+          : 'unknown'
+      }
     />
   );
 }

@@ -80,7 +80,7 @@ interface SubmissionReviewClientProps {
   rules: RuleItem[];
   facts: FactItem[];
   terms: TermItem[];
-  initialAiStatus: 'ok' | 'unavailable';
+  initialAiStatus: 'ok' | 'unavailable' | 'unknown';
   reviewerFeedbackNote?: string | null;
 }
 
@@ -185,7 +185,7 @@ export function SubmissionReviewClient({
   const [submissionStatus, setSubmissionStatus] = useState(submission.status);
   const [allFindings, setAllFindings] =
     useState<FindingItem[]>(initialFindings);
-  const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable'>(
+  const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable' | 'unknown'>(
     initialAiStatus,
   );
 
@@ -460,7 +460,7 @@ export function SubmissionReviewClient({
   }
 
   // Handle Re-check:
-  // Calls POST /api/submissions/[id]/versions with working copy,
+  // Calls POST /api/submissions/[id]/versions with working copy if changed,
   // then calls POST /api/submissions/[id]/review, and shows the new findings.
   async function handleRecheck() {
     setIsRechecking(true);
@@ -472,23 +472,40 @@ export function SubmissionReviewClient({
         throw new Error('Working copy exceeds the 10,000 character limit');
       }
 
-      // 1. Create next version
-      const verRes = await fetch(
-        `/api/submissions/${submission.id}/versions`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: workingText }),
-        },
-      );
+      let currentVersionId = latestVersion.id;
 
-      const verData = await verRes.json();
-      if (!verRes.ok) {
-        throw new Error(verData.error || 'Failed to create new version');
+      if (workingText !== latestVersion.content) {
+        // 1. Create next version
+        const verRes = await fetch(
+          `/api/submissions/${submission.id}/versions`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: workingText }),
+          },
+        );
+
+        const verData = await verRes.json();
+        if (!verRes.ok) {
+          throw new Error(verData.error || 'Failed to create new version');
+        }
+
+        const newVersionId = verData.versionId;
+        const newVersionNo = verData.versionNo;
+        currentVersionId = newVersionId;
+
+        const newVersionObj: VersionData = {
+          id: newVersionId,
+          submission_id: submission.id,
+          version_no: newVersionNo,
+          content: workingText,
+          created_at: new Date().toISOString(),
+        };
+
+        // Prepend the new version to versions
+        setVersions((prev) => [newVersionObj, ...prev]);
+        setSelectedVersionId(newVersionId);
       }
-
-      const newVersionId = verData.versionId;
-      const newVersionNo = verData.versionNo;
 
       // 2. Call review
       const revRes = await fetch(`/api/submissions/${submission.id}/review`, {
@@ -497,37 +514,32 @@ export function SubmissionReviewClient({
 
       const revData = await revRes.json();
       if (!revRes.ok) {
-        throw new Error(revData.error || 'Failed to review new version');
+        throw new Error(revData.error || 'Failed to review version');
       }
-
-      const newVersionObj: VersionData = {
-        id: newVersionId,
-        submission_id: submission.id,
-        version_no: newVersionNo,
-        content: workingText,
-        created_at: new Date().toISOString(),
-      };
-
-      // Prepend the new version to versions
-      setVersions((prev) => [newVersionObj, ...prev]);
-      setSelectedVersionId(newVersionId);
 
       // Replace findings for this version
       const newFindings = Array.isArray(revData.findings)
         ? revData.findings
         : [];
       setAllFindings((prev) => [
-        ...prev.filter((f) => f.version_id !== newVersionId),
+        ...prev.filter((f) => f.version_id !== currentVersionId),
         ...newFindings,
       ]);
 
-      setAiStatus(revData.aiStatus || 'ok');
+      setAiStatus(
+        revData.aiStatus === 'ok'
+          ? 'ok'
+          : revData.aiStatus === 'unavailable'
+          ? 'unavailable'
+          : 'unknown',
+      );
       setSubmissionStatus('draft');
       setSuccessMessage(
-        `Version ${newVersionNo} created! Re-check complete with ${newFindings.length} issue(s) flagged.`,
+        `Review check complete with ${newFindings.length} issue(s) flagged.`,
       );
     } catch (err: any) {
       setActionError(err.message || 'Error during re-check');
+      setAiStatus('unavailable');
     } finally {
       setIsRechecking(false);
     }
@@ -749,7 +761,7 @@ export function SubmissionReviewClient({
       )}
 
       {/* AI Unavailable Banner */}
-      {aiStatus === 'unavailable' && (
+      {aiStatus === 'unavailable' && displayedFindings.length > 0 && (
         <div
           role="alert"
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800 text-amber-900 dark:text-amber-200 shadow-sm"
@@ -886,15 +898,36 @@ export function SubmissionReviewClient({
           </div>
 
           {displayedFindings.length === 0 ? (
-            <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
-              <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-foreground">
-                No Issues Flagged
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                Your content aligns with brand guidelines and approved facts.
-              </p>
-            </div>
+            aiStatus === 'ok' ? (
+              <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
+                <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-foreground">
+                  No Issues Flagged
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Your content aligns with brand guidelines and approved facts.
+                </p>
+              </div>
+            ) : (
+              <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
+                <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto mb-4">
+                  Basic checks found nothing, but the AI review did not run, so this is not a full check.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRecheck}
+                  disabled={isRechecking}
+                  className="gap-1.5"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${isRechecking ? 'animate-spin' : ''}`}
+                  />
+                  <span>{isRechecking ? 'Re-checking...' : 'Try again'}</span>
+                </Button>
+              </div>
+            )
           ) : (
             numberedFindings.map((finding) => {
               const citation = getCitationInfo(

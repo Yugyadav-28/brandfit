@@ -20,6 +20,7 @@ import {
   User,
   Check,
   RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 
 export interface FindingItem {
@@ -107,6 +108,7 @@ interface ReviewerClientProps {
   terms: TermItem[];
   initialComments: CommentItem[];
   initialApprovals: ApprovalItem[];
+  initialAiStatus?: 'ok' | 'unavailable' | 'unknown';
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -200,6 +202,7 @@ export function ReviewerClient({
   terms,
   initialComments,
   initialApprovals,
+  initialAiStatus,
 }: ReviewerClientProps) {
   const [selectedVersionId, setSelectedVersionId] = useState<string>(
     versions[0]?.id || '',
@@ -207,6 +210,12 @@ export function ReviewerClient({
   const [submissionStatus, setSubmissionStatus] = useState<string>(
     submission.status,
   );
+  const [allFindings, setAllFindings] =
+    useState<FindingItem[]>(initialFindings);
+  const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable' | 'unknown'>(
+    initialAiStatus ?? 'unknown',
+  );
+  const [isRetryingReview, setIsRetryingReview] = useState(false);
   const [comments, setComments] = useState<CommentItem[]>(initialComments);
   const [newCommentText, setNewCommentText] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
@@ -226,16 +235,46 @@ export function ReviewerClient({
     versions.find((v) => v.id === selectedVersionId) || latestVersion;
   const isViewingLatest = activeVersion?.id === latestVersion?.id;
 
+  async function handleRetryReview() {
+    setIsRetryingReview(true);
+    try {
+      const res = await fetch(`/api/submissions/${submission.id}/review`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to run review');
+      }
+      const newFindings = Array.isArray(data.findings) ? data.findings : [];
+      setAllFindings((prev) => [
+        ...prev.filter((f) => f.version_id !== latestVersion.id),
+        ...newFindings,
+      ]);
+      setAiStatus(
+        data.aiStatus === 'ok'
+          ? 'ok'
+          : data.aiStatus === 'unavailable'
+          ? 'unavailable'
+          : 'unknown',
+      );
+    } catch (err: any) {
+      console.error('Error retrying review:', err);
+      setAiStatus('unavailable');
+    } finally {
+      setIsRetryingReview(false);
+    }
+  }
+
   // Active findings for the displayed version
   const displayedFindings = useMemo(() => {
-    return initialFindings
+    return allFindings
       .filter((f) => f.version_id === activeVersion.id)
       .sort(
         (a, b) =>
           (SEVERITY_RANK[a.severity] ?? 99) -
           (SEVERITY_RANK[b.severity] ?? 99),
       );
-  }, [initialFindings, activeVersion.id]);
+  }, [allFindings, activeVersion.id]);
 
   const numberedFindings = useMemo(() => {
     return displayedFindings.map((f, idx) => ({
@@ -615,15 +654,36 @@ export function ReviewerClient({
           </div>
 
           {displayedFindings.length === 0 ? (
-            <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
-              <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-foreground">
-                No Issues Flagged
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                No brand compliance findings were recorded for this version.
-              </p>
-            </div>
+            aiStatus === 'ok' ? (
+              <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
+                <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-foreground">
+                  No Issues Flagged
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  No brand compliance findings were recorded for this version.
+                </p>
+              </div>
+            ) : (
+              <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card">
+                <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto mb-4">
+                  Basic checks found nothing, but the AI review did not run, so this is not a full check.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetryReview}
+                  disabled={isRetryingReview}
+                  className="gap-1.5"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${isRetryingReview ? 'animate-spin' : ''}`}
+                  />
+                  <span>{isRetryingReview ? 'Re-checking...' : 'Try again'}</span>
+                </Button>
+              </div>
+            )
           ) : (
             numberedFindings.map((finding) => {
               const citation = getCitationInfo(

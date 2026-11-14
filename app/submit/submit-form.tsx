@@ -96,10 +96,7 @@ export function SubmitForm({ companies, defaultCompanyId }: SubmitFormProps) {
       }
 
       // 3. Redirect to /submit/[id]
-      const targetUrl =
-        aiStatus === 'unavailable'
-          ? `/submit/${submissionId}?aiStatus=unavailable`
-          : `/submit/${submissionId}`;
+      const targetUrl = `/submit/${submissionId}?aiStatus=${aiStatus}`;
 
       router.push(targetUrl);
     } catch (err: any) {
