@@ -143,6 +143,9 @@ export interface ReviewerClientProps {
   initialComments: CommentItem[];
   initialApprovals: ApprovalItem[];
   initialAiStatus?: 'ok' | 'unavailable' | 'unknown';
+  initialRetrieval?: RetrievalStats | null;
+  reviewResult?: ReviewResultData | null;
+  retrieval?: RetrievalStats | null;
   needsEscalation?: boolean;
   escalation?: EscalationInfo | null;
 }
@@ -239,6 +242,9 @@ export function ReviewerClient({
   initialComments,
   initialApprovals,
   initialAiStatus,
+  initialRetrieval,
+  reviewResult,
+  retrieval,
   needsEscalation = false,
   escalation = null,
 }: ReviewerClientProps) {

@@ -5,7 +5,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
-    "test:insights": "node --experimental-strip-types scripts/test-insights.ts"
+    "test:insights": "node --experimental-strip-types scripts/test-insights.ts",
+    "test:rls": "node --experimental-strip-types scripts/test-rls.ts 2>/dev/null || ./node_modules/.bin/jiti scripts/test-rls.ts"
   },
   "dependencies": {
     "@google/genai": "^3.0.0",
