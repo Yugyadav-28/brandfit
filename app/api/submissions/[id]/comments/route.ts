@@ -37,7 +37,11 @@ export async function GET(
     const { role } = await requireMember(submission.company_id);
 
     const isAuthor = submission.author_id === user.id;
-    const isReviewerOrEmployer = role === 'reviewer' || role === 'employer';
+    const userRole = role as string;
+    const isReviewerOrEmployer =
+      userRole === 'reviewer' ||
+      userRole === 'authorised_reviewer' ||
+      userRole === 'employer';
 
     if (!isAuthor && !isReviewerOrEmployer) {
       return NextResponse.json(
@@ -169,7 +173,11 @@ export async function POST(
     const { role } = await requireMember(submission.company_id);
 
     const isAuthor = submission.author_id === user.id;
-    const isReviewerOrEmployer = role === 'reviewer' || role === 'employer';
+    const userRole = role as string;
+    const isReviewerOrEmployer =
+      userRole === 'reviewer' ||
+      userRole === 'authorised_reviewer' ||
+      userRole === 'employer';
 
     if (!isAuthor && !isReviewerOrEmployer) {
       return NextResponse.json(

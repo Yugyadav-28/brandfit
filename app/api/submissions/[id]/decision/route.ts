@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, requireMember } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logAudit } from '@/lib/audit';
+import { needsEscalation } from '@/lib/escalation/needsEscalation';
 
 export async function POST(
   request: NextRequest,
@@ -90,8 +91,9 @@ export async function POST(
     const user = await requireUser();
     const { role } = await requireMember(submission.company_id, [
       'reviewer',
+      'authorised_reviewer',
       'employer',
-    ]);
+    ] as any);
 
     // 3. Rule: A reviewer cannot approve their own submission unless they are an employer
     if (
@@ -106,6 +108,25 @@ export async function POST(
         },
         { status: 403 },
       );
+    }
+
+    // 3b. If approved and cites a sensitive rule, requires authorised sign off
+    const userRole = role as string;
+    if (
+      decision === 'approved' &&
+      userRole !== 'authorised_reviewer' &&
+      userRole !== 'employer'
+    ) {
+      const sensitive = await needsEscalation(id);
+      if (sensitive) {
+        return NextResponse.json(
+          {
+            error:
+              'This post cites a sensitive rule and needs authorised sign off. Escalate it instead.',
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const trimmedNote = typeof note === 'string' && note.trim().length > 0 ? note.trim() : null;
@@ -169,10 +190,13 @@ export async function POST(
       approval: approvalRow,
     });
   } catch (err: any) {
+    if (err?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
     if (err?.status === 401 || err?.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (err?.message?.includes('Forbidden')) {
+    if (err?.message?.includes('Forbidden') || err?.name === 'ForbiddenError') {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
     console.error('Unexpected error in POST /api/submissions/[id]/decision:', err);
