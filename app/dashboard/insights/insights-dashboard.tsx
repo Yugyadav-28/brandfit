@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ResponsiveContainer,
@@ -21,6 +21,16 @@ import {
   AlertTriangle,
   CheckCircle2,
   HelpCircle,
+  FileText,
+  Sparkles,
+  Loader2,
+  Quote,
+  MessageSquare,
+  Check,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AiBadge } from "@/components/ai-badge";
   TrendingDown,
   TrendingUp,
   FileText,
@@ -33,15 +43,37 @@ import type {
   RuleRejectionRate,
   PeriodTrend,
 } from "@/lib/insights/compute";
+import {
+  suggestClearerWordingAction,
+  applyRuleRewriteAction,
+  type RuleRewriteSuggestion,
+} from "./actions";
+
+export interface PossiblyUnclearRuleItem {
+  id: string;
+  code: string;
+  title: string;
+  body: string;
+  category?: string;
+  decided: number;
+  rejected: number;
+  rejectionRate: number;
+  rejectionReasons: string[];
+  rejectedQuotes: string[];
+}
 
 interface InsightsDashboardProps {
   range: "7d" | "30d" | "all";
   companyName: string;
+  companyId: string;
+  role: string;
+  isEmployer: boolean;
   role: string;
   brokenRules: BrokenRule[];
   repeatStats: RepeatMistakeStat[];
   rejectionRatesData: RuleRejectionRate[];
   trendData: PeriodTrend[];
+  unclearRules: PossiblyUnclearRuleItem[];
   totalSubmissions: number;
   totalFindings: number;
 }
@@ -49,11 +81,14 @@ interface InsightsDashboardProps {
 export function InsightsDashboardClient({
   range,
   companyName,
+  companyId,
   role,
+  isEmployer,
   brokenRules,
   repeatStats,
   rejectionRatesData,
   trendData,
+  unclearRules,
   totalSubmissions,
   totalFindings,
 }: InsightsDashboardProps) {
@@ -64,14 +99,119 @@ export function InsightsDashboardClient({
     trend: false,
   });
 
+  // Local overrides for rule title & body after apply
+  const [localRuleUpdates, setLocalRuleUpdates] = useState<
+    Record<string, { title: string; body: string }>
+  >({});
+
+  // AI suggestions state per rule ID
+  const [suggestions, setSuggestions] = useState<Record<string, RuleRewriteSuggestion | null>>({});
+  const [loadingSuggest, setLoadingSuggest] = useState<Record<string, boolean>>({});
+  const [suggestErrors, setSuggestErrors] = useState<Record<string, string | null>>({});
+
+  // Apply state per rule ID
+  const [applying, setApplying] = useState<Record<string, boolean>>({});
+  const [applyErrors, setApplyErrors] = useState<Record<string, string | null>>({});
+  const [applySuccess, setApplySuccess] = useState<Record<string, string | null>>({});
+
   const toggleView = (key: string) => {
     setViewTable((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSuggest = async (rule: PossiblyUnclearRuleItem) => {
+    setLoadingSuggest((prev) => ({ ...prev, [rule.id]: true }));
+    setSuggestErrors((prev) => ({ ...prev, [rule.id]: null }));
+    setApplySuccess((prev) => ({ ...prev, [rule.id]: null }));
+
+    try {
+      const currentTitle = localRuleUpdates[rule.id]?.title ?? rule.title;
+      const currentBody = localRuleUpdates[rule.id]?.body ?? rule.body;
+
+      const res = await suggestClearerWordingAction(
+        companyId,
+        {
+          id: rule.id,
+          code: rule.code,
+          title: currentTitle,
+          body: currentBody,
+          category: rule.category,
+        },
+        rule.rejectionReasons,
+        rule.rejectedQuotes,
+      );
+
+      if (res.success && res.suggestion) {
+        setSuggestions((prev) => ({ ...prev, [rule.id]: res.suggestion! }));
+      } else {
+        setSuggestErrors((prev) => ({
+          ...prev,
+          [rule.id]: res.error || "Failed to generate suggested wording.",
+        }));
+      }
+    } catch (err: any) {
+      setSuggestErrors((prev) => ({
+        ...prev,
+        [rule.id]: err?.message || "An unexpected error occurred while requesting suggestions.",
+      }));
+    } finally {
+      setLoadingSuggest((prev) => ({ ...prev, [rule.id]: false }));
+    }
+  };
+
+  const handleDismiss = (ruleId: string) => {
+    setSuggestions((prev) => ({ ...prev, [ruleId]: null }));
+    setSuggestErrors((prev) => ({ ...prev, [ruleId]: null }));
+  };
+
+  const handleApply = async (rule: PossiblyUnclearRuleItem, suggestion: RuleRewriteSuggestion) => {
+    setApplying((prev) => ({ ...prev, [rule.id]: true }));
+    setApplyErrors((prev) => ({ ...prev, [rule.id]: null }));
+
+    try {
+      const res = await applyRuleRewriteAction(
+        companyId,
+        rule.id,
+        suggestion.title,
+        suggestion.body,
+        suggestion.explanation,
+      );
+
+      if (res.success) {
+        // Update local wording immediately
+        setLocalRuleUpdates((prev) => ({
+          ...prev,
+          [rule.id]: {
+            title: suggestion.title,
+            body: suggestion.body,
+          },
+        }));
+        // Clear active suggestion
+        setSuggestions((prev) => ({ ...prev, [rule.id]: null }));
+        setApplySuccess((prev) => ({
+          ...prev,
+          [rule.id]: `Rewrite successfully applied to ${rule.code}! Embeddings refreshed.`,
+        }));
+      } else {
+        setApplyErrors((prev) => ({
+          ...prev,
+          [rule.id]: res.error || "Failed to apply rewrite.",
+        }));
+      }
+    } catch (err: any) {
+      setApplyErrors((prev) => ({
+        ...prev,
+        [rule.id]: err?.message || "An unexpected error occurred while applying rewrite.",
+      }));
+    } finally {
+      setApplying((prev) => ({ ...prev, [rule.id]: false }));
+    }
   };
 
   const hasData = totalSubmissions > 0 || totalFindings > 0;
 
   // Rules with at least 5 decided findings (for Card C)
   const eligibleRejectionRules = rejectionRatesData.filter((r) => r.decided >= 5);
+  const flaggedUnclearCount = unclearRules.length;
   const unclearRules = eligibleRejectionRules.filter((r) => r.possibly_unclear);
 
   return (
@@ -586,6 +726,310 @@ export function InsightsDashboardClient({
           </ChartCard>
         </div>
       )}
+
+      {/* ── Possibly Unclear Rules Section ── */}
+      <section aria-labelledby="unclear-rules-heading" className="space-y-6 pt-4 border-t">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h2 id="unclear-rules-heading" className="text-2xl font-bold tracking-tight text-foreground">
+              Possibly unclear rules
+            </h2>
+            <span
+              className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                unclearRules.length > 0
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                  : "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30"
+              }`}
+            >
+              {unclearRules.length} {unclearRules.length === 1 ? "rule flagged" : "rules flagged"}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
+            Rules with at least 5 decided findings and a rejection rate of 40% or higher. When writers frequently reject findings citing a rule, the wording may be ambiguous, overly broad, or lack clear examples.
+          </p>
+        </div>
+
+        {unclearRules.length === 0 ? (
+          <div className="border rounded-2xl bg-card p-8 text-center space-y-3 shadow-sm">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-600 mx-auto">
+              <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-foreground">No rules are currently flagged as unclear</h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                All rules with 5 or more decided reviewer findings have rejection rates below 40%.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {unclearRules.map((rule) => {
+              const currentTitle = localRuleUpdates[rule.id]?.title ?? rule.title;
+              const currentBody = localRuleUpdates[rule.id]?.body ?? rule.body;
+              const suggestion = suggestions[rule.id];
+              const isLoading = loadingSuggest[rule.id] ?? false;
+              const isApplying = applying[rule.id] ?? false;
+              const suggestError = suggestErrors[rule.id];
+              const applyError = applyErrors[rule.id];
+              const successMsg = applySuccess[rule.id];
+
+              return (
+                <div
+                  key={rule.id}
+                  className="bg-card border rounded-2xl p-6 shadow-sm space-y-6 transition-all"
+                >
+                  {/* Rule Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                          {rule.code}
+                        </span>
+                        {rule.category && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground capitalize">
+                            {rule.category}
+                          </span>
+                        )}
+                        <h3 className="text-lg font-semibold text-foreground">{currentTitle}</h3>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span className="font-semibold text-amber-600 dark:text-amber-400">
+                          {(rule.rejectionRate * 100).toFixed(1)}% rejection rate
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {rule.rejected} rejected of {rule.decided} decided findings
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Employer action button if no suggestion currently active */}
+                    {isEmployer && !suggestion && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoading}
+                          onClick={() => handleSuggest(rule)}
+                          className="gap-2 border-purple-500/40 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                              <span>Generating suggestion...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                              <span>Suggest clearer wording</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notification banners */}
+                  {suggestError && (
+                    <div
+                      role="alert"
+                      className="p-3.5 rounded-lg border border-destructive/30 bg-destructive/10 text-xs text-destructive flex items-start gap-2.5"
+                    >
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+                      <div className="flex-1 space-y-1">
+                        <p className="font-semibold">Unable to generate suggestion</p>
+                        <p>{suggestError}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {applyError && (
+                    <div
+                      role="alert"
+                      className="p-3.5 rounded-lg border border-destructive/30 bg-destructive/10 text-xs text-destructive flex items-start gap-2.5"
+                    >
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+                      <div className="flex-1 space-y-1">
+                        <p className="font-semibold">Failed to apply rule rewrite</p>
+                        <p>{applyError}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {successMsg && (
+                    <div
+                      role="status"
+                      className="p-3.5 rounded-lg border border-green-500/30 bg-green-500/10 text-xs text-green-700 dark:text-green-300 flex items-start gap-2.5"
+                    >
+                      <Check className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+                      <p className="font-medium">{successMsg}</p>
+                    </div>
+                  )}
+
+                  {/* Main comparison grid: Beside each other when suggestion exists */}
+                  <div
+                    className={`grid gap-6 ${
+                      suggestion ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+                    }`}
+                  >
+                    {/* Current Wording Column */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Current wording
+                        </h4>
+                        <div className="p-4 rounded-xl border bg-muted/20 space-y-2">
+                          <p className="text-sm font-semibold text-foreground">{currentTitle}</p>
+                          <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                            {currentBody || (
+                              <span className="italic text-muted-foreground">
+                                (No description provided)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Writers' Rejection Reasons (Up to 5) */}
+                      <div className="space-y-2 pt-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+                          Writers&apos; rejection reasons ({rule.rejectionReasons.length} of max 5)
+                        </h4>
+                        {rule.rejectionReasons.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic p-3 rounded-lg border bg-muted/10">
+                            No written rejection reasons recorded.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {rule.rejectionReasons.map((reason, idx) => (
+                              <div
+                                key={idx}
+                                className="p-2.5 rounded-lg border bg-muted/30 text-xs text-foreground/90 italic flex items-start gap-2"
+                              >
+                                <span className="text-muted-foreground font-mono text-[11px] not-italic shrink-0">
+                                  #{idx + 1}
+                                </span>
+                                <span>&ldquo;{reason}&rdquo;</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Quoted texts that were rejected (Up to 5) */}
+                      <div className="space-y-2 pt-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Quote className="h-3.5 w-3.5" aria-hidden="true" />
+                          Quoted content flagged &amp; rejected ({rule.rejectedQuotes.length} of max 5)
+                        </h4>
+                        {rule.rejectedQuotes.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic p-3 rounded-lg border bg-muted/10">
+                            No quoted snippets recorded.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {rule.rejectedQuotes.map((q, idx) => (
+                              <div
+                                key={idx}
+                                className="p-2.5 rounded-lg border bg-muted/30 font-mono text-[11px] text-foreground/90 flex items-start gap-2"
+                              >
+                                <span className="text-muted-foreground font-sans not-italic shrink-0">
+                                  #{idx + 1}
+                                </span>
+                                <span className="break-words">&ldquo;{q}&rdquo;</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* AI Suggestion Column (shown beside current wording) */}
+                    {suggestion && (
+                      <div className="space-y-4 flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Suggested clearer wording
+                              </h4>
+                              <AiBadge />
+                            </div>
+                          </div>
+
+                          <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/5 space-y-3">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-wider font-semibold text-purple-700 dark:text-purple-300">
+                                Proposed Title
+                              </p>
+                              <p className="text-sm font-semibold text-foreground mt-0.5">
+                                {suggestion.title}
+                              </p>
+                            </div>
+
+                            <div className="pt-2 border-t border-purple-500/20">
+                              <p className="text-[11px] uppercase tracking-wider font-semibold text-purple-700 dark:text-purple-300">
+                                Proposed Body (With Specific Examples)
+                              </p>
+                              <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed mt-1">
+                                {suggestion.body}
+                              </p>
+                            </div>
+
+                            <div className="pt-2 border-t border-purple-500/20">
+                              <p className="text-[11px] uppercase tracking-wider font-semibold text-purple-700 dark:text-purple-300">
+                                Why this improves clarity
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                {suggestion.explanation}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons: Apply and Dismiss */}
+                        <div className="pt-4 border-t flex flex-wrap items-center justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isApplying}
+                            onClick={() => handleDismiss(rule.id)}
+                            className="text-xs"
+                          >
+                            Dismiss
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isApplying}
+                            onClick={() => handleApply(rule, suggestion)}
+                            className="text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            {isApplying ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                <span>Applying rewrite...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span>Apply</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

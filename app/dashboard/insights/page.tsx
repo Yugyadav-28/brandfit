@@ -12,12 +12,17 @@ import {
   type InsightSubmission,
   type InsightMember,
 } from "@/lib/insights/compute";
-import { InsightsDashboardClient } from "./insights-dashboard";
+import {
+  InsightsDashboardClient,
+  type PossiblyUnclearRuleItem,
+} from "./insights-dashboard";
 
 export const metadata = {
   title: "Insights & Analytics - BrandFit",
   description: "Brand rule violations, repeat mistakes, rule clarity, and quality trends",
 };
+
+export const maxDuration = 60;
 
 interface PageProps {
   searchParams: Promise<{ range?: string }>;
@@ -47,6 +52,7 @@ async function InsightsContent({ searchParams }: PageProps) {
   }
 
   const companyId = activeMembership.company_id;
+  const isEmployer = activeMembership.role === "employer";
 
   // 2. Fetch company details
   const { data: company } = await admin
@@ -90,10 +96,10 @@ async function InsightsContent({ searchParams }: PageProps) {
     display_name: m.display_name,
   }));
 
-  // 5. Fetch rules for this company
+  // 5. Fetch rules for this company (include body for clearer wording suggestions)
   const { data: allRulesData } = await admin
     .from("rules")
-    .select("id, code, title, category")
+    .select("id, code, title, body, category")
     .eq("company_id", companyId);
 
   const rules: InsightRule[] = (allRulesData || []).map((r) => ({
@@ -133,6 +139,7 @@ async function InsightsContent({ searchParams }: PageProps) {
     rule_code: string | null;
     decision: string | null;
     decision_note: string | null;
+    quoted_text: string | null;
     created_at: string | null;
   }[] = [];
 
@@ -149,7 +156,7 @@ async function InsightsContent({ searchParams }: PageProps) {
     if (versionIds.length > 0) {
       const { data: fData } = await admin
         .from("findings")
-        .select("id, version_id, rule_code, decision, decision_note, created_at")
+        .select("id, version_id, rule_code, decision, decision_note, quoted_text, created_at")
         .in("version_id", versionIds);
 
       allFindingsData = (fData || []) as typeof allFindingsData;
@@ -199,15 +206,61 @@ async function InsightsContent({ searchParams }: PageProps) {
   const trendPeriod: "day" | "week" = range === "all" ? "week" : "day";
   const trendData = trendByPeriod(submissions, firstVersionFindings, trendPeriod);
 
+  // 10. Extract possibly unclear rules and their writers' rejection reasons & quoted texts
+  const unclearRates = rejectionRatesData.filter((r) => r.possibly_unclear);
+  const unclearRulesData: PossiblyUnclearRuleItem[] = [];
+
+  for (const rateItem of unclearRates) {
+    const ruleRecord = (allRulesData || []).find(
+      (r) => r.code?.trim().toUpperCase() === rateItem.code.trim().toUpperCase()
+    );
+    if (!ruleRecord) continue;
+
+    // Filter rejected findings for this rule code
+    const matchingRejected = allFindingsData.filter(
+      (f) =>
+        f.rule_code?.trim().toUpperCase() === rateItem.code.trim().toUpperCase() &&
+        f.decision === "rejected"
+    );
+
+    const reasonsSet = new Set<string>();
+    const quotesSet = new Set<string>();
+
+    for (const f of matchingRejected) {
+      if (f.decision_note && f.decision_note.trim().length > 0) {
+        reasonsSet.add(f.decision_note.trim());
+      }
+      if (f.quoted_text && f.quoted_text.trim().length > 0) {
+        quotesSet.add(f.quoted_text.trim());
+      }
+    }
+
+    unclearRulesData.push({
+      id: ruleRecord.id,
+      code: ruleRecord.code,
+      title: ruleRecord.title,
+      body: ruleRecord.body || "",
+      category: ruleRecord.category || "General",
+      decided: rateItem.decided,
+      rejected: rateItem.rejected,
+      rejectionRate: rateItem.rejection_rate,
+      rejectionReasons: Array.from(reasonsSet).slice(0, 5),
+      rejectedQuotes: Array.from(quotesSet).slice(0, 5),
+    });
+  }
+
   return (
     <InsightsDashboardClient
       range={range}
       companyName={company.name}
+      companyId={companyId}
       role={activeMembership.role}
+      isEmployer={isEmployer}
       brokenRules={brokenRules}
       repeatStats={repeatStats}
       rejectionRatesData={rejectionRatesData}
       trendData={trendData}
+      unclearRules={unclearRulesData}
       totalSubmissions={submissions.length}
       totalFindings={firstVersionFindings.length}
     />
