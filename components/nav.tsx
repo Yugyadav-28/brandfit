@@ -48,6 +48,7 @@ export async function Nav() {
   if (role === "employer") {
     links.push(
       { label: "Dashboard", href: "/dashboard" },
+      { label: "Insights", href: "/dashboard/insights" },
       { label: "Guidelines", href: "/company/guidelines" },
       { label: "Members", href: "/company/members" },
       { label: "Audit", href: "/company/audit" },
@@ -55,7 +56,11 @@ export async function Nav() {
       { label: "Review", href: "/review" },
     );
   } else if (role === "reviewer") {
-    links.push({ label: "Review", href: "/review" });
+    links.push(
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Insights", href: "/dashboard/insights" },
+      { label: "Review", href: "/review" },
+    );
   }
 
   // Everyone links (when member of a company)

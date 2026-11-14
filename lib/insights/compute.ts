@@ -255,19 +255,19 @@ export function repeatMistakeStats(
     const authorFindings = authorFindingsMap.get(authorId) ?? [];
     const totalMistakes = authorFindings.length;
 
-    const codeToSubmissions = new Map<string, Set<string>>();
+    const codeToSubmissionIds = new Map<string, Set<string>>();
     for (const f of authorFindings) {
       const rawCode = f.rule_code || f.ruleCode || '';
       const code = rawCode.trim();
       if (!code) continue;
       const subId = f.submission_id || f.submissionId || 'default-sub';
-      const set = codeToSubmissions.get(code) ?? new Set<string>();
+      const set = codeToSubmissionIds.get(code) ?? new Set<string>();
       set.add(subId);
-      codeToSubmissions.set(code, set);
+      codeToSubmissionIds.set(code, set);
     }
 
     const repeatedCodes: string[] = [];
-    for (const [code, subs] of codeToSubmissions.entries()) {
+    for (const [code, subs] of codeToSubmissionIds.entries()) {
       if (subs.size >= 2) {
         repeatedCodes.push(code);
       }
