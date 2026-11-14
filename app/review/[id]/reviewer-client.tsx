@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { AiBadge } from '@/components/ai-badge';
 import { Button } from '@/components/ui/button';
+import type { RetrievalStats } from '@/lib/retrieval/retrieve';
 import {
   CheckCircle2,
   XCircle,
@@ -97,7 +98,27 @@ export interface SubmissionDetails {
   updated_at: string;
 }
 
-interface ReviewerClientProps {
+export interface ReviewResultData {
+  findings?: FindingItem[];
+  aiStatus?: string;
+  retrieval?: RetrievalStats | null;
+}
+
+export function getRetrievalLine(stats?: RetrievalStats | null): string | null {
+  if (!stats || !stats.mode) return null;
+  if (stats.mode === 'retrieved') {
+    return `Checked against ${stats.usedRules} of ${stats.totalRules} rules and ${stats.usedFacts} of ${stats.totalFacts} facts (retrieval)`;
+  }
+  if (stats.mode === 'all') {
+    return 'Checked against all rules and facts';
+  }
+  if (stats.mode === 'fallback') {
+    return 'Retrieval was unavailable, so a reduced set of rules was used';
+  }
+  return null;
+}
+
+export interface ReviewerClientProps {
   submission: SubmissionDetails;
   currentUserId: string;
   currentUserRole: 'reviewer' | 'employer';
@@ -109,6 +130,9 @@ interface ReviewerClientProps {
   initialComments: CommentItem[];
   initialApprovals: ApprovalItem[];
   initialAiStatus?: 'ok' | 'unavailable' | 'unknown';
+  reviewResult?: ReviewResultData | null;
+  retrieval?: RetrievalStats | null;
+  initialRetrieval?: RetrievalStats | null;
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -203,6 +227,9 @@ export function ReviewerClient({
   initialComments,
   initialApprovals,
   initialAiStatus,
+  reviewResult,
+  retrieval,
+  initialRetrieval,
 }: ReviewerClientProps) {
   const [selectedVersionId, setSelectedVersionId] = useState<string>(
     versions[0]?.id || '',
@@ -215,6 +242,17 @@ export function ReviewerClient({
   const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable' | 'unknown'>(
     initialAiStatus ?? 'unknown',
   );
+  const [retrievalStats, setRetrievalStats] = useState<RetrievalStats | null>(
+    () => reviewResult?.retrieval ?? retrieval ?? initialRetrieval ?? null,
+  );
+
+  useEffect(() => {
+    if (reviewResult?.retrieval) {
+      setRetrievalStats(reviewResult.retrieval);
+    } else if (retrieval) {
+      setRetrievalStats(retrieval);
+    }
+  }, [reviewResult?.retrieval, retrieval]);
   const [isRetryingReview, setIsRetryingReview] = useState(false);
   const [comments, setComments] = useState<CommentItem[]>(initialComments);
   const [newCommentText, setNewCommentText] = useState('');
@@ -257,6 +295,9 @@ export function ReviewerClient({
           ? 'unavailable'
           : 'unknown',
       );
+      if (data.retrieval) {
+        setRetrievalStats(data.retrieval);
+      }
     } catch (err: any) {
       console.error('Error retrying review:', err);
       setAiStatus('unavailable');
@@ -811,6 +852,11 @@ export function ReviewerClient({
                 </div>
               );
             })
+          )}
+          {getRetrievalLine(retrievalStats) && (
+            <p className="text-xs text-muted-foreground pt-1">
+              {getRetrievalLine(retrievalStats)}
+            </p>
           )}
         </div>
       </div>
