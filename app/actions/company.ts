@@ -2,7 +2,8 @@
 
 import crypto from "crypto";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { requireUser, requireMember } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
@@ -152,4 +153,59 @@ export async function joinCompanyAction(
   }
 
   redirect("/my");
+}
+
+export async function updateCompanyNameAction(
+  companyId: string,
+  newName: string,
+): Promise<{ success?: boolean; error?: string; newName?: string }> {
+  const member = await requireMember(companyId, "employer");
+  const trimmed = (newName || "").trim();
+
+  if (trimmed.length < 2 || trimmed.length > 60) {
+    return { error: "Company name must be between 2 and 60 characters." };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: currentCompany, error: fetchErr } = await admin
+    .from("companies")
+    .select("name")
+    .eq("id", companyId)
+    .single();
+
+  if (fetchErr || !currentCompany) {
+    return { error: "Company not found." };
+  }
+
+  const oldName = currentCompany.name;
+
+  if (oldName === trimmed) {
+    return { success: true, newName: trimmed };
+  }
+
+  const { error: updateErr } = await admin
+    .from("companies")
+    .update({ name: trimmed })
+    .eq("id", companyId);
+
+  if (updateErr) {
+    console.error("Failed to update company name:", updateErr);
+    return { error: "Unable to update company name right now. Please try again." };
+  }
+
+  await logAudit({
+    companyId,
+    userId: member.user.id,
+    action: "company_renamed",
+    detail: {
+      old_name: oldName,
+      new_name: trimmed,
+    },
+  });
+
+  revalidatePath("/company/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  return { success: true, newName: trimmed };
 }

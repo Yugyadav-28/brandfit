@@ -51,6 +51,7 @@ export async function Nav() {
       { label: "Guidelines", href: "/company/guidelines" },
       { label: "Members", href: "/company/members" },
       { label: "Audit", href: "/company/audit" },
+      { label: "Settings", href: "/company/settings" },
       { label: "Review", href: "/review" },
     );
   } else if (role === "reviewer") {
