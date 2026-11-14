@@ -15,6 +15,7 @@ import {
   History,
   AlertCircle,
   Edit3,
+  BarChart3,
 } from "lucide-react";
 import { calculateTeamActivity, type TeamActivityRow } from "@/lib/insights/teamActivity";
 
@@ -459,19 +460,22 @@ async function DashboardContent() {
         </section>
       )}
 
-      {/* ── Quick Links (employer only) ── */}
-      {isEmployer && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            Quick links
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            <QuickLink href="/company/guidelines" icon={<BookOpen className="h-4 w-4" />} label="Guidelines" />
-            <QuickLink href="/company/members" icon={<Users className="h-4 w-4" />} label="Members" />
-            <QuickLink href="/company/audit" icon={<History className="h-4 w-4" />} label="Audit trail" />
-          </div>
-        </section>
-      )}
+      {/* ── Quick Links ── */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+          Quick links
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          <QuickLink href="/dashboard/insights" icon={<BarChart3 className="h-4 w-4" />} label="Insights" />
+          {isEmployer && (
+            <>
+              <QuickLink href="/company/guidelines" icon={<BookOpen className="h-4 w-4" />} label="Guidelines" />
+              <QuickLink href="/company/members" icon={<Users className="h-4 w-4" />} label="Members" />
+              <QuickLink href="/company/audit" icon={<History className="h-4 w-4" />} label="Audit trail" />
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
