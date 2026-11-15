@@ -23,7 +23,7 @@ export function CompanyNewForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl">Create a company</CardTitle>
+        <h1 className="text-2xl font-bold tracking-tight text-card-foreground">Create a company</h1>
         <CardDescription>
           Enter your company name to start a new brand workspace and invite your team.
         </CardDescription>
@@ -48,6 +48,7 @@ export function CompanyNewForm() {
             <div
               id="name-error"
               role="alert"
+              aria-live="polite"
               className="flex items-center gap-2 text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
             >
               <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -55,7 +56,7 @@ export function CompanyNewForm() {
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full min-h-[44px]" disabled={isPending}>
             {isPending ? "Creating company..." : "Create company"}
           </Button>
         </form>

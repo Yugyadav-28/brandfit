@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +63,17 @@ export function MembersManager({
 
   // Confirm regenerate code state
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (regenerateConfirmOpen) setRegenerateConfirmOpen(false);
+        if (removeConfirm) setRemoveConfirm(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [regenerateConfirmOpen, removeConfirm]);
 
   // Set role handler (Employee, Reviewer, Authorised reviewer)
   const handleRoleChange = (
@@ -193,7 +204,7 @@ export function MembersManager({
                 message: "Copied join link to clipboard!",
               });
             }}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-1.5 min-h-[44px]"
           >
             <Share2 className="h-4 w-4" />
             Copy Invite Link
@@ -205,7 +216,7 @@ export function MembersManager({
             size="sm"
             onClick={() => setRegenerateConfirmOpen(true)}
             disabled={isPending}
-            className="flex items-center gap-1.5 border-amber-500/40 hover:bg-amber-500/10 hover:border-amber-500 text-amber-700 dark:text-amber-400"
+            className="flex items-center gap-1.5 min-h-[44px] border-amber-500/40 hover:bg-amber-500/10 hover:border-amber-500 text-amber-700 dark:text-amber-400"
           >
             <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
             Regenerate code
@@ -266,7 +277,7 @@ export function MembersManager({
                 message: "Copied join link to clipboard!",
               });
             }}
-            className="shrink-0 flex items-center gap-1.5 border-primary/30 hover:bg-primary/10"
+            className="shrink-0 flex items-center gap-1.5 min-h-[44px] border-primary/30 hover:bg-primary/10"
           >
             <Share2 className="h-3.5 w-3.5" /> Copy invite link
           </Button>
@@ -302,7 +313,7 @@ export function MembersManager({
                   message: "Copied join link to clipboard!",
                 });
               }}
-              className="inline-flex items-center gap-1.5"
+              className="inline-flex items-center gap-1.5 min-h-[44px]"
             >
               <Share2 className="h-4 w-4" /> Copy invite link
             </Button>
@@ -405,7 +416,7 @@ export function MembersManager({
                             }
                             disabled={isPending}
                             aria-label={`Role choice for ${member.display_name || "member"}`}
-                            className="text-xs h-8 rounded-md border border-input bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="text-xs min-h-[44px] rounded-md border border-input bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                           >
                             <option value="employee">Employee</option>
                             <option value="reviewer">Reviewer</option>
@@ -426,10 +437,10 @@ export function MembersManager({
                               })
                             }
                             disabled={isPending}
-                            className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                            className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[44px] min-w-[44px] px-2.5"
                             aria-label={`Remove ${member.display_name || "member"}`}
                           >
-                            <UserMinus className="h-3.5 w-3.5" />
+                            <UserMinus className="h-4 w-4" />
                           </Button>
                         </div>
                       )}
@@ -468,6 +479,7 @@ export function MembersManager({
                 variant="outline"
                 onClick={() => setRegenerateConfirmOpen(false)}
                 disabled={isPending}
+                className="min-h-[44px]"
               >
                 Cancel
               </Button>
@@ -475,6 +487,7 @@ export function MembersManager({
                 type="button"
                 onClick={handleRegenerateCode}
                 disabled={isPending}
+                className="min-h-[44px]"
               >
                 {isPending ? "Regenerating..." : "Regenerate Code"}
               </Button>
@@ -509,6 +522,7 @@ export function MembersManager({
                 variant="outline"
                 onClick={() => setRemoveConfirm(null)}
                 disabled={isPending}
+                className="min-h-[44px]"
               >
                 Cancel
               </Button>
@@ -517,6 +531,7 @@ export function MembersManager({
                 variant="destructive"
                 onClick={handleConfirmRemove}
                 disabled={isPending}
+                className="min-h-[44px]"
               >
                 {isPending ? "Removing..." : "Remove Member"}
               </Button>

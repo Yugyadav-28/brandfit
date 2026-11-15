@@ -28,7 +28,7 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl">Join a company</CardTitle>
+        <h1 className="text-2xl font-bold tracking-tight text-card-foreground">Join a company</h1>
         <CardDescription>
           Enter the 6-character join code provided by your employer to join their brand workspace.
         </CardDescription>
@@ -68,6 +68,7 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
             <div
               id="join-error"
               role="alert"
+              aria-live="polite"
               className="flex items-center gap-2 text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
             >
               <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -75,7 +76,7 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full min-h-[44px]" disabled={isPending}>
             {isPending ? "Joining company..." : "Join company"}
           </Button>
         </form>
