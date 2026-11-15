@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { requireUser, requireMember } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { GuidelinesManager, type RuleItem, type FactItem, type TermItem } from "./guidelines-manager";
+import { GuidelinesManager, type RuleItem, type FactItem, type TermItem, type BrandColourItem } from "./guidelines-manager";
 
 export const metadata = {
   title: "Brand Guidelines - BrandFit",
@@ -70,6 +70,13 @@ async function GuidelinesContent() {
     .eq("company_id", companyId)
     .order("preferred", { ascending: true });
 
+  // Fetch brand colours
+  const { data: brandColours } = await admin
+    .from("brand_colours")
+    .select("id, name, hex, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: true });
+
   return (
     <GuidelinesManager
       companyId={companyId}
@@ -77,6 +84,7 @@ async function GuidelinesContent() {
       initialRules={(rules || []) as RuleItem[]}
       initialFacts={(facts || []) as FactItem[]}
       initialTerms={(terms || []) as TermItem[]}
+      initialColours={(brandColours || []) as BrandColourItem[]}
     />
   );
 }

@@ -12,6 +12,8 @@ import {
   deleteFactAction,
   saveTermAction,
   deleteTermAction,
+  saveBrandColourAction,
+  deleteBrandColourAction,
   loadSampleBrandKitAction,
 } from "./actions";
 import {
@@ -25,6 +27,7 @@ import {
   FileText,
   HelpCircle,
   BookA,
+  Palette,
 } from "lucide-react";
 
 export interface RuleItem {
@@ -52,12 +55,20 @@ export interface TermItem {
   note: string | null;
 }
 
+export interface BrandColourItem {
+  id: string;
+  name: string;
+  hex: string;
+  created_at?: string;
+}
+
 interface GuidelinesManagerProps {
   companyId: string;
   companyName: string;
   initialRules: RuleItem[];
   initialFacts: FactItem[];
   initialTerms: TermItem[];
+  initialColours?: BrandColourItem[];
 }
 
 const CATEGORIES = [
@@ -75,9 +86,10 @@ export function GuidelinesManager({
   initialRules,
   initialFacts,
   initialTerms,
+  initialColours = [],
 }: GuidelinesManagerProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"rules" | "facts" | "terms">("rules");
+  const [activeTab, setActiveTab] = useState<"rules" | "facts" | "terms" | "palette">("rules");
   const [isPending, startTransition] = useTransition();
 
   // Notification banners
@@ -99,11 +111,16 @@ export function GuidelinesManager({
   const [editingTerm, setEditingTerm] = useState<TermItem | null>(null);
   const [termFormError, setTermFormError] = useState<string | null>(null);
 
+  const [colourModalOpen, setColourModalOpen] = useState(false);
+  const [colourName, setColourName] = useState("");
+  const [colourHex, setColourHex] = useState("#3B82F6");
+  const [colourFormError, setColourFormError] = useState<string | null>(null);
+
   // Delete confirm state
   const [deleteConfirm, setDeleteConfirm] = useState<{
-    type: "rule" | "fact" | "term";
+    type: "rule" | "fact" | "term" | "colour";
     id: string;
-    identifier: string; // code or preferred
+    identifier: string; // code, preferred, or colour name
   } | null>(null);
 
   // Handler: Load sample brand kit
@@ -270,6 +287,49 @@ export function GuidelinesManager({
     });
   };
 
+  // Brand Colour Submit
+  const handleColourSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setColourFormError(null);
+    const formData = new FormData(e.currentTarget);
+    const name = ((formData.get("name") as string) || colourName).trim();
+    let hex = ((formData.get("hex") as string) || colourHex).trim();
+
+    if (!name) {
+      setColourFormError("Please enter a colour name.");
+      return;
+    }
+    if (!hex) {
+      setColourFormError("Please enter a colour hex code.");
+      return;
+    }
+    if (!hex.startsWith("#")) {
+      hex = "#" + hex;
+    }
+    hex = hex.toUpperCase();
+
+    if (!/^#[0-9A-F]{6}$/i.test(hex)) {
+      setColourFormError("Invalid hex colour. Format must be #RRGGBB (e.g. #3B82F6).");
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await saveBrandColourAction(companyId, { name, hex });
+      if (res.error) {
+        setColourFormError(res.error);
+      } else {
+        setColourModalOpen(false);
+        setColourName("");
+        setColourHex("#3B82F6");
+        setFeedback({
+          type: "success",
+          message: `Brand colour "${name}" (${hex}) added successfully.`,
+        });
+        router.refresh();
+      }
+    });
+  };
+
   // Confirm Delete
   const handleConfirmDelete = async () => {
     if (!deleteConfirm) return;
@@ -281,8 +341,10 @@ export function GuidelinesManager({
         res = await deleteRuleAction(companyId, id, identifier);
       } else if (type === "fact") {
         res = await deleteFactAction(companyId, id, identifier);
-      } else {
+      } else if (type === "term") {
         res = await deleteTermAction(companyId, id, identifier);
+      } else {
+        res = await deleteBrandColourAction(companyId, id);
       }
 
       if (res.error) {
@@ -411,6 +473,24 @@ export function GuidelinesManager({
               {initialTerms.length}
             </span>
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "palette"}
+            onClick={() => setActiveTab("palette")}
+            className={`flex items-center gap-2 px-4 py-2 font-medium text-sm rounded-t-md transition-colors border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              activeTab === "palette"
+                ? "border-primary text-primary bg-primary/5 font-semibold"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Palette className="h-4 w-4" aria-hidden="true" />
+            Palette
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted font-mono">
+              {initialColours.length}
+            </span>
+          </button>
         </div>
 
         {/* Tab-specific Add Button */}
@@ -454,6 +534,21 @@ export function GuidelinesManager({
               className="flex items-center gap-1.5"
             >
               <Plus className="h-4 w-4" /> Add Term
+            </Button>
+          )}
+
+          {activeTab === "palette" && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setColourFormError(null);
+                setColourName("");
+                setColourHex("#3B82F6");
+                setColourModalOpen(true);
+              }}
+              className="flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" /> Add Colour
             </Button>
           )}
         </div>
@@ -803,6 +898,152 @@ export function GuidelinesManager({
         </div>
       )}
 
+      {/* Tab 4: PALETTE */}
+      {activeTab === "palette" && (
+        <div className="space-y-6">
+          {/* Quick inline add card */}
+          <div className="border rounded-lg bg-card p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" /> Add brand colour
+            </h2>
+            <form onSubmit={handleColourSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="inline-colour-name" className="text-xs font-medium">
+                  Colour Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="inline-colour-name"
+                  name="name"
+                  value={colourName}
+                  onChange={(e) => setColourName(e.target.value)}
+                  placeholder="e.g. Primary Blue"
+                  disabled={isPending}
+                  required
+                />
+              </div>
+              <div className="w-full sm:w-56 space-y-1.5">
+                <Label htmlFor="inline-colour-hex" className="text-xs font-medium">
+                  Colour & Hex <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    aria-label="Colour picker"
+                    value={/^#[0-9A-Fa-f]{6}$/.test(colourHex) ? colourHex : "#3B82F6"}
+                    onChange={(e) => setColourHex(e.target.value.toUpperCase())}
+                    disabled={isPending}
+                    className="h-9 w-11 rounded border border-input p-0.5 bg-background cursor-pointer shrink-0"
+                  />
+                  <Input
+                    id="inline-colour-hex"
+                    name="hex"
+                    value={colourHex}
+                    onChange={(e) => setColourHex(e.target.value)}
+                    placeholder="#3B82F6"
+                    className="font-mono text-sm uppercase"
+                    disabled={isPending}
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={isPending} className="shrink-0">
+                {isPending ? "Adding..." : "Add Colour"}
+              </Button>
+            </form>
+          </div>
+
+          {/* Colours Table / List */}
+          <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
+            {initialColours.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground space-y-4">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground mx-auto">
+                  <Palette className="h-6 w-6" aria-hidden="true" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground text-base">No brand colours defined yet</p>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Add your organization&apos;s brand colours so image uploads can be verified for brand palette compliance.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setColourFormError(null);
+                      setColourName("");
+                      setColourHex("#3B82F6");
+                      setColourModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 mx-auto"
+                  >
+                    <Plus className="h-4 w-4" /> Add your first colour
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/60 text-muted-foreground border-b text-xs uppercase tracking-wider">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 font-semibold w-24">
+                        Swatch
+                      </th>
+                      <th scope="col" className="px-6 py-3 font-semibold">
+                        Name
+                      </th>
+                      <th scope="col" className="px-6 py-3 font-semibold w-48">
+                        Hex
+                      </th>
+                      <th scope="col" className="px-6 py-3 font-semibold text-right w-28">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {initialColours.map((col) => (
+                      <tr key={col.id} className="hover:bg-muted/40 transition-colors">
+                        <td className="px-6 py-4">
+                          <div
+                            className="w-9 h-9 rounded-md border shadow-sm"
+                            style={{ backgroundColor: col.hex }}
+                            title={`${col.name} (${col.hex})`}
+                            aria-label={`${col.name} colour swatch (${col.hex})`}
+                          />
+                        </td>
+                        <td className="px-6 py-4 font-medium text-foreground">
+                          {col.name}
+                        </td>
+                        <td className="px-6 py-4">
+                          <code className="text-xs font-mono font-semibold px-2 py-1 rounded bg-muted border">
+                            {col.hex.toUpperCase()}
+                          </code>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteConfirm({
+                                type: "colour",
+                                id: col.id,
+                                identifier: col.name,
+                              })
+                            }
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition"
+                            aria-label={`Delete brand colour ${col.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* MODAL: ADD / EDIT RULE */}
       {ruleModalOpen && (
         <div
@@ -1097,6 +1338,89 @@ export function GuidelinesManager({
                 </Button>
                 <Button type="submit" disabled={isPending}>
                   {isPending ? "Saving..." : editingTerm ? "Save Changes" : "Create Term"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD BRAND COLOUR */}
+      {colourModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in"
+        >
+          <div className="bg-card text-card-foreground border rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Palette className="h-5 w-5 text-primary" /> Add Brand Colour
+              </h2>
+              <button
+                type="button"
+                onClick={() => setColourModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Close dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {colourFormError && (
+              <div
+                role="alert"
+                className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md"
+              >
+                {colourFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleColourSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="modal-colour-name">Colour Name</Label>
+                <Input
+                  id="modal-colour-name"
+                  name="name"
+                  value={colourName}
+                  onChange={(e) => setColourName(e.target.value)}
+                  placeholder="e.g. Primary Blue"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="modal-colour-hex">Colour & Hex Code</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    aria-label="Colour picker"
+                    value={/^#[0-9A-Fa-f]{6}$/.test(colourHex) ? colourHex : "#3B82F6"}
+                    onChange={(e) => setColourHex(e.target.value.toUpperCase())}
+                    className="h-10 w-12 rounded cursor-pointer border border-input p-0.5 bg-background shrink-0"
+                  />
+                  <Input
+                    id="modal-colour-hex"
+                    name="hex"
+                    value={colourHex}
+                    onChange={(e) => setColourHex(e.target.value)}
+                    placeholder="#3B82F6"
+                    className="font-mono uppercase"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setColourModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? "Saving..." : "Add Colour"}
                 </Button>
               </div>
             </form>
