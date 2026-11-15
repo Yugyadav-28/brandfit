@@ -22,12 +22,15 @@ import {
   Check,
   RotateCcw,
   RefreshCw,
+  Info,
+  Loader2,
+  FileText,
 } from 'lucide-react';
 
 export interface FindingItem {
   id: string;
   version_id: string;
-  source: 'rule_check' | 'ai';
+  source: 'rule_check' | 'ai' | 'image_check' | 'doc_check' | string;
   category: string;
   severity: 'high' | 'medium' | 'low';
   quoted_text: string;
@@ -109,6 +112,11 @@ export interface SubmissionDetails {
   author_display_name: string;
   created_at: string;
   updated_at: string;
+  source_type?: 'text' | 'document' | 'image' | string;
+  source_filename?: string | null;
+  image_path?: string | null;
+  image_alt?: string | null;
+  check_notes?: string | null;
 }
 
 export interface ReviewResultData {
@@ -148,6 +156,7 @@ export interface ReviewerClientProps {
   retrieval?: RetrievalStats | null;
   needsEscalation?: boolean;
   escalation?: EscalationInfo | null;
+  isCut?: boolean;
 }
 
 const SEVERITY_RANK: Record<string, number> = {
@@ -247,7 +256,29 @@ export function ReviewerClient({
   retrieval,
   needsEscalation = false,
   escalation = null,
+  isCut,
 }: ReviewerClientProps) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  useEffect(() => {
+    if (submission.source_type === 'image') {
+      setImageLoading(true);
+      fetch(`/api/uploads/image-url?submissionId=${submission.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.signedUrl || data?.url) {
+            setImageUrl(data.signedUrl || data.url);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching image signed URL:', err);
+        })
+        .finally(() => {
+          setImageLoading(false);
+        });
+    }
+  }, [submission.id, submission.source_type]);
   const [selectedVersionId, setSelectedVersionId] = useState<string>(
     versions[0]?.id || '',
   );
@@ -914,6 +945,45 @@ export function ReviewerClient({
               </span>
             </div>
 
+            {/* Document / Image media preview above content */}
+            {submission.source_type === 'image' && (
+              <div className="mb-4 space-y-2">
+                {imageLoading ? (
+                  <div className="p-6 rounded-lg border border-border bg-muted/20 flex items-center justify-center text-xs text-muted-foreground gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading image preview...</span>
+                  </div>
+                ) : imageUrl ? (
+                  <div className="rounded-lg border border-border bg-muted/10 p-2 flex justify-center">
+                    <img
+                      src={imageUrl}
+                      alt={submission.image_alt || activeVersion.content || ''}
+                      className="max-h-80 w-auto max-w-full rounded object-contain"
+                    />
+                  </div>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Alt text:</span>{' '}
+                  {submission.image_alt || activeVersion.content || ''}
+                </p>
+              </div>
+            )}
+
+            {submission.source_type === 'document' && (
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/20 text-sm font-medium text-foreground">
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  <span className="truncate">{submission.source_filename || 'Uploaded Document'}</span>
+                </div>
+                {(isCut || (activeVersion?.content?.length || 0) >= 10000) && (
+                  <div className="p-2.5 rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+                    <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Only the first 10,000 characters were checked</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap text-foreground bg-muted/20 p-4 rounded-lg border border-border min-h-[340px] max-h-[640px] overflow-y-auto">
               {renderedContent}
             </div>
@@ -932,6 +1002,23 @@ export function ReviewerClient({
               </p>
             </div>
           </div>
+
+          {/* If check_notes has text, show it as a small information box above the findings */}
+          {submission.check_notes && submission.check_notes.trim().length > 0 && (
+            <div
+              role="region"
+              aria-label="Check notes"
+              className="p-3.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs flex items-start gap-2.5 shadow-sm"
+            >
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-semibold block text-foreground">Check Notes</span>
+                <p className="whitespace-pre-line leading-relaxed">
+                  {submission.check_notes.trim()}
+                </p>
+              </div>
+            </div>
+          )}
 
           {displayedFindings.length === 0 ? (
             aiStatus === 'ok' ? (
@@ -1006,6 +1093,16 @@ export function ReviewerClient({
 
                     <div className="flex items-center gap-2">
                       {finding.source === 'ai' && <AiBadge />}
+                      {finding.source === 'image_check' && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 select-none">
+                          Image check
+                        </span>
+                      )}
+                      {finding.source === 'doc_check' && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 select-none">
+                          Document check
+                        </span>
+                      )}
                     </div>
                   </div>
 

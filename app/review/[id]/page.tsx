@@ -158,6 +158,25 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
   const findings = (findingsData ?? []) as FindingItem[];
   const versions = allVersions as VersionItem[];
 
+  let isCut = false;
+  if (submission.source_type === 'document') {
+    if (allVersions.some((v) => (v.content?.length || 0) >= 10000)) {
+      isCut = true;
+    } else {
+      const { data: auditLog } = await admin
+        .from('audit_logs')
+        .select('detail')
+        .eq('action', 'upload_reviewed')
+        .eq('company_id', submission.company_id)
+        .contains('detail', { submissionId: id })
+        .limit(1)
+        .maybeSingle();
+      if ((auditLog?.detail as any)?.truncated === true) {
+        isCut = true;
+      }
+    }
+  }
+
   return (
     <ReviewerClient
       submission={{
@@ -169,7 +188,13 @@ async function ReviewDetailsContent({ params, searchParams }: ReviewDetailsProps
         author_display_name: authorDisplayName,
         created_at: submission.created_at,
         updated_at: submission.updated_at,
+        source_type: submission.source_type || 'text',
+        source_filename: submission.source_filename || null,
+        image_path: submission.image_path || null,
+        image_alt: submission.image_alt || null,
+        check_notes: submission.check_notes || null,
       }}
+      isCut={isCut}
       currentUserId={user.id}
       currentUserRole={role as 'reviewer' | 'authorised_reviewer' | 'employer'}
       versions={versions}
