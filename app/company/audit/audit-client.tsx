@@ -133,7 +133,10 @@ export function AuditClient({
               Employer Only
             </span>
           </div>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+          <p className="text-sm text-muted-foreground mt-1">
+            Review recent activity, guideline changes, and compliance review decisions across your workspace.
+          </p>
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
             <Building2 className="h-4 w-4" />
             <span>Workspace: <strong>{activeCompany?.companyName}</strong></span>
           </p>
@@ -151,7 +154,7 @@ export function AuditClient({
               onChange={(e) =>
                 router.push(`/company/audit?companyId=${e.target.value}`)
               }
-              className="text-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="text-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {companies.map((c) => (
                 <option key={c.companyId} value={c.companyId}>
@@ -185,7 +188,7 @@ export function AuditClient({
             id="action-filter"
             value={filterAction}
             onChange={(e) => setFilterAction(e.target.value)}
-            className="text-xs rounded-md border border-input bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="text-xs rounded-md border border-input bg-background px-2.5 py-1 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="all">All Actions</option>
             {uniqueActions.map((act) => (
@@ -276,14 +279,14 @@ export function AuditClient({
                             onClick={() =>
                               setExpandedRowId(isExpanded ? null : log.id)
                             }
-                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                            className="min-h-[44px] px-3 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
                             {isExpanded ? (
-                              <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                              <ChevronDown className="h-3.5 w-3.5" />
                             ) : (
-                              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                              <ChevronRight className="h-3.5 w-3.5" />
                             )}
-                            <span>{isExpanded ? 'Hide' : 'Inspect'}</span>
+                            <span>{isExpanded ? 'Hide event details' : 'Inspect event details'}</span>
                           </Button>
                         </td>
                       </tr>

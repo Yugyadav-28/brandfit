@@ -49,6 +49,7 @@ export interface RuleItem {
   category?: string;
   title?: string;
   body?: string;
+  needs_escalation?: boolean;
 }
 
 export interface FactItem {
@@ -158,6 +159,8 @@ function getCitationInfo(
     if (term) {
       return {
         code: 'TERM',
+        isTerm: true,
+        isSensitive: false,
         title: 'Brand Terminology Standard',
         body: `Avoid: "${term.avoid}" → Preferred: "${term.preferred}"${
           term.note ? ` (${term.note})` : ''
@@ -166,6 +169,8 @@ function getCitationInfo(
     }
     return {
       code: 'TERM',
+      isTerm: true,
+      isSensitive: false,
       title: 'Brand Terminology Standard',
       body: 'Always adhere to approved brand terminology and avoid restricted phrasing.',
     };
@@ -177,6 +182,8 @@ function getCitationInfo(
   if (rule) {
     return {
       code: rule.code,
+      isTerm: false,
+      isSensitive: Boolean(rule.needs_escalation),
       title: rule.title || 'Brand Guideline Rule',
       body: rule.body || 'No description provided.',
     };
@@ -188,6 +195,8 @@ function getCitationInfo(
   if (fact) {
     return {
       code: fact.code,
+      isTerm: false,
+      isSensitive: false,
       title: 'Approved Company Fact',
       body: `${fact.statement}${fact.source ? ` (Source: ${fact.source})` : ''}`,
     };
@@ -195,8 +204,10 @@ function getCitationInfo(
 
   return {
     code: ruleCode,
-    title: 'Brand Rule Citation',
-    body: `Referenced brand guideline code ${ruleCode}.`,
+    isTerm: false,
+    isSensitive: false,
+    title: 'Brand Rule',
+    body: `Referenced brand guideline rule ${ruleCode}.`,
   };
 }
 
@@ -302,6 +313,47 @@ export function SubmissionReviewClient({
   const [isRechecking, setIsRechecking] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showHighWarningModal, setShowHighWarningModal] = useState(false);
+  const warningModalRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showHighWarningModal) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setShowHighWarningModal(false);
+        return;
+      }
+
+      if (e.key === 'Tab' && warningModalRef.current) {
+        const focusables = warningModalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    // Set initial focus inside dialog
+    const timer = setTimeout(() => {
+      const firstBtn = warningModalRef.current?.querySelector<HTMLElement>('button');
+      firstBtn?.focus();
+    }, 50);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showHighWarningModal]);
 
   // Finding action state
   const [activeEditId, setActiveEditId] = useState<string | null>(null);
@@ -737,6 +789,9 @@ export function SubmissionReviewClient({
               {isViewingLatest ? '(Latest)' : '(History)'}
             </span>
           </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Review flagged brand issues, apply edits, and send your content for reviewer sign off.
+          </p>
         </div>
 
         {/* Action Buttons: Re-check & Send for Review */}
@@ -747,7 +802,7 @@ export function SubmissionReviewClient({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyApprovedText}
-                className="gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+                className="gap-2 min-h-[44px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
               >
                 {copied ? (
                   <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -761,7 +816,7 @@ export function SubmissionReviewClient({
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadApprovedText}
-                className="gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+                className="gap-2 min-h-[44px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span>Download as text file</span>
@@ -774,7 +829,7 @@ export function SubmissionReviewClient({
             size="sm"
             onClick={handleRecheck}
             disabled={isRechecking || isSending}
-            className="gap-2"
+            className="gap-2 min-h-[44px]"
           >
             <RotateCcw
               className={`h-3.5 w-3.5 ${isRechecking ? 'animate-spin' : ''}`}
@@ -791,7 +846,7 @@ export function SubmissionReviewClient({
               submissionStatus === 'in_review' ||
               submissionStatus === 'escalated'
             }
-            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            className="gap-2 min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Send className="h-3.5 w-3.5" />
             <span>
@@ -1076,7 +1131,7 @@ export function SubmissionReviewClient({
                   <div className="rounded-lg border border-border bg-muted/10 p-2 flex justify-center">
                     <img
                       src={imageUrl}
-                      alt={submission.image_alt || activeVersion.content || ''}
+                      alt={submission.image_alt || activeVersion.content || 'Uploaded image for brand review'}
                       className="max-h-80 w-auto max-w-full rounded object-contain"
                     />
                   </div>
@@ -1252,8 +1307,9 @@ export function SubmissionReviewClient({
                         #{finding.findingNumber}
                       </span>
 
-                      {/* Severity badge with text */}
+                      {/* Severity badge with tooltip */}
                       <span
+                        title="Severity indicates how critical the issue is: High issues need attention before approval, while Medium and Low are recommendations."
                         className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
                           finding.severity === 'high'
                             ? 'bg-destructive/15 text-destructive border-destructive/30'
@@ -1271,7 +1327,11 @@ export function SubmissionReviewClient({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {finding.source === 'ai' && <AiBadge />}
+                      {finding.source === 'ai' && (
+                        <span title="This suggestion was generated by an AI model and needs human review.">
+                          <AiBadge />
+                        </span>
+                      )}
                       {finding.source === 'image_check' && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 select-none">
                           Image check
@@ -1320,12 +1380,32 @@ export function SubmissionReviewClient({
 
                   {/* Cited Rule, Fact, or Term */}
                   <div className="p-3 rounded-lg border border-border bg-card/60 text-xs space-y-1">
-                    <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                      <BookOpen className="h-3.5 w-3.5 text-primary" />
-                      <span>Cited: {citation.title}</span>
-                      <span className="text-muted-foreground font-mono text-[11px]">
-                        ({citation.code})
+                    <div className="flex items-center gap-1.5 font-semibold text-foreground flex-wrap">
+                      <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span title="The brand guideline rule, fact, or terminology standard cited for this issue.">
+                        Cited:
                       </span>
+                      {citation.isSensitive ? (
+                        <span
+                          title="Sensitive rule: This brand rule requires review and sign off by an authorised reviewer or employer."
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 border border-purple-300 dark:border-purple-800"
+                        >
+                          <ShieldAlert className="h-3 w-3" />
+                          <span>Sensitive rule {citation.code}</span>
+                        </span>
+                      ) : citation.isTerm ? (
+                        <span
+                          title="Restricted brand terminology standard: words or phrases to avoid in favour of approved brand wording."
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border font-mono"
+                        >
+                          TERM
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground font-mono text-[11px]">
+                          Rule {citation.code}
+                        </span>
+                      )}
+                      <span className="text-foreground">— {citation.title}</span>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
                       {citation.body}
@@ -1343,16 +1423,20 @@ export function SubmissionReviewClient({
                     </p>
                   </div>
 
-                  {/* Confidence Note */}
-                  <div className="text-xs text-muted-foreground flex items-center justify-between">
+                  {/* Confidence Note with tooltip */}
+                  <div
+                    title="Confidence reflects how sure the automated reviewer is about this issue. Lower confidence items need human judgement."
+                    className="text-xs text-muted-foreground flex items-center justify-between"
+                  >
                     <span>
                       {finding.confidence < 0.6 ? (
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          ⚠️ Needs human judgement
+                        <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                          <span>Confidence: Needs human judgement</span>
                         </span>
                       ) : (
                         <span>
-                          {Math.round(finding.confidence * 100)}% confidence
+                          Confidence: {Math.round(finding.confidence * 100)}%
                         </span>
                       )}
                     </span>
@@ -1385,10 +1469,10 @@ export function SubmissionReviewClient({
                               variant="outline"
                               onClick={() => handleAccept(finding)}
                               disabled={processingFindingId !== null || isRechecking || isSending}
-                              className="text-xs gap-1 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                              className="text-xs gap-1.5 min-h-[44px] border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                             >
                               <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                              <span>{processingFindingId === finding.id ? 'Accepting...' : 'Accept'}</span>
+                              <span>{processingFindingId === finding.id ? 'Accepting...' : 'Accept suggestion'}</span>
                             </Button>
 
                             <Button
@@ -1400,10 +1484,10 @@ export function SubmissionReviewClient({
                                 setActiveRejectId(null);
                               }}
                               disabled={processingFindingId !== null || isRechecking || isSending}
-                              className="text-xs gap-1"
+                              className="text-xs gap-1.5 min-h-[44px]"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
-                              <span>Edit</span>
+                              <span>Edit text</span>
                             </Button>
 
                             <Button
@@ -1415,10 +1499,10 @@ export function SubmissionReviewClient({
                                 setActiveEditId(null);
                               }}
                               disabled={processingFindingId !== null || isRechecking || isSending}
-                              className="text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
+                              className="text-xs gap-1.5 min-h-[44px] text-destructive hover:bg-destructive/10 border-destructive/30"
                             >
                               <XCircle className="h-3.5 w-3.5" />
-                              <span>Reject</span>
+                              <span>Reject finding</span>
                             </Button>
                           </div>
                         )}
@@ -1426,24 +1510,28 @@ export function SubmissionReviewClient({
                       {/* Inline Edit Form */}
                       {activeEditId === finding.id && (
                         <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
-                          <label className="text-xs font-semibold text-foreground block">
+                          <label
+                            htmlFor={`edit-input-${finding.id}`}
+                            className="text-xs font-semibold text-foreground block"
+                          >
                             Type replacement for &ldquo;{finding.quoted_text}
                             &rdquo;:
                           </label>
                           <input
+                            id={`edit-input-${finding.id}`}
                             type="text"
                             value={customEditText}
                             onChange={(e) => setCustomEditText(e.target.value)}
                             disabled={processingFindingId === finding.id}
-                            className="w-full text-xs p-2 rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full text-xs p-2.5 rounded border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             placeholder="Type replacement text..."
                           />
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Button
                               size="sm"
                               onClick={() => handleApplyEdit(finding)}
                               disabled={processingFindingId === finding.id || !customEditText.trim()}
-                              className="text-xs"
+                              className="text-xs min-h-[44px]"
                             >
                               {processingFindingId === finding.id ? 'Applying...' : 'Apply Replacement'}
                             </Button>
@@ -1452,7 +1540,7 @@ export function SubmissionReviewClient({
                               variant="ghost"
                               onClick={() => setActiveEditId(null)}
                               disabled={processingFindingId === finding.id}
-                              className="text-xs"
+                              className="text-xs min-h-[44px]"
                             >
                               Cancel
                             </Button>
@@ -1463,24 +1551,28 @@ export function SubmissionReviewClient({
                       {/* Inline Reject Form */}
                       {activeRejectId === finding.id && (
                         <div className="space-y-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
-                          <label className="text-xs font-semibold text-foreground block">
+                          <label
+                            htmlFor={`reject-input-${finding.id}`}
+                            className="text-xs font-semibold text-foreground block"
+                          >
                             Reason for rejection (required):
                           </label>
                           <input
+                            id={`reject-input-${finding.id}`}
                             type="text"
                             value={rejectNote}
                             onChange={(e) => setRejectNote(e.target.value)}
                             disabled={processingFindingId === finding.id}
-                            className="w-full text-xs p-2 rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full text-xs p-2.5 rounded border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             placeholder="Why is this finding not applicable?"
                           />
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Button
                               size="sm"
                               variant="destructive"
                               onClick={() => handleApplyReject(finding)}
                               disabled={processingFindingId === finding.id || !rejectNote.trim()}
-                              className="text-xs"
+                              className="text-xs min-h-[44px]"
                             >
                               {processingFindingId === finding.id ? 'Rejecting...' : 'Confirm Rejection'}
                             </Button>
@@ -1489,7 +1581,7 @@ export function SubmissionReviewClient({
                               variant="ghost"
                               onClick={() => setActiveRejectId(null)}
                               disabled={processingFindingId === finding.id}
-                              className="text-xs"
+                              className="text-xs min-h-[44px]"
                             >
                               Cancel
                             </Button>
@@ -1522,7 +1614,11 @@ export function SubmissionReviewClient({
           aria-labelledby="warning-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md bg-card border border-amber-300 dark:border-amber-800 rounded-xl p-6 shadow-xl space-y-4">
+          <div
+            ref={warningModalRef}
+            tabIndex={-1}
+            className="w-full max-w-md bg-card border border-amber-300 dark:border-amber-800 rounded-xl p-6 shadow-xl space-y-4 focus-visible:outline-none"
+          >
             <div className="flex items-start gap-3">
               <div className="p-2.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 shrink-0">
                 <ShieldAlert className="h-6 w-6" />
@@ -1555,12 +1651,13 @@ export function SubmissionReviewClient({
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowHighWarningModal(false)}
                 disabled={isSending}
+                className="min-h-[44px]"
               >
                 Go Back & Fix
               </Button>
@@ -1569,7 +1666,7 @@ export function SubmissionReviewClient({
                 variant="destructive"
                 onClick={executeSendForReview}
                 disabled={isSending}
-                className="gap-1.5"
+                className="gap-1.5 min-h-[44px]"
               >
                 <Send className="h-3.5 w-3.5" />
                 <span>

@@ -49,6 +49,7 @@ export interface RuleItem {
   category?: string;
   title?: string;
   body?: string;
+  needs_escalation?: boolean;
 }
 
 export interface FactItem {
@@ -197,6 +198,8 @@ function getCitationInfo(
     if (term) {
       return {
         code: 'TERM',
+        isTerm: true,
+        isSensitive: false,
         title: 'Brand Terminology Standard',
         body: `Avoid: "${term.avoid}" → Preferred: "${term.preferred}"${
           term.note ? ` (${term.note})` : ''
@@ -205,6 +208,8 @@ function getCitationInfo(
     }
     return {
       code: 'TERM',
+      isTerm: true,
+      isSensitive: false,
       title: 'Brand Terminology Standard',
       body: 'Always adhere to approved brand terminology and avoid restricted phrasing.',
     };
@@ -216,6 +221,8 @@ function getCitationInfo(
   if (rule) {
     return {
       code: rule.code,
+      isTerm: false,
+      isSensitive: Boolean(rule.needs_escalation),
       title: rule.title || 'Brand Guideline Rule',
       body: rule.body || 'No description provided.',
     };
@@ -227,6 +234,8 @@ function getCitationInfo(
   if (fact) {
     return {
       code: fact.code,
+      isTerm: false,
+      isSensitive: false,
       title: 'Approved Company Fact',
       body: `${fact.statement}${fact.source ? ` (Source: ${fact.source})` : ''}`,
     };
@@ -234,8 +243,10 @@ function getCitationInfo(
 
   return {
     code: ruleCode,
-    title: 'Brand Rule Citation',
-    body: `Referenced brand guideline code ${ruleCode}.`,
+    isTerm: false,
+    isSensitive: false,
+    title: 'Brand Rule',
+    body: `Referenced brand guideline rule ${ruleCode}.`,
   };
 }
 
@@ -326,6 +337,54 @@ export function ReviewerClient({
   const [isSubmittingDecision, setIsSubmittingDecision] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Modal Refs & Keyboard Focus Trap / Escape handler
+  const decisionModalRef = React.useRef<HTMLDivElement>(null);
+  const escalateModalRef = React.useRef<HTMLDivElement>(null);
+  const resolveModalRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const activeModalRef = isDecisionModalOpen
+        ? decisionModalRef
+        : isEscalateModalOpen
+        ? escalateModalRef
+        : isResolveModalOpen
+        ? resolveModalRef
+        : null;
+
+      if (!activeModalRef) return;
+
+      if (e.key === 'Escape') {
+        if (isDecisionModalOpen) setIsDecisionModalOpen(false);
+        if (isEscalateModalOpen) setIsEscalateModalOpen(false);
+        if (isResolveModalOpen) setIsResolveModalOpen(false);
+        return;
+      }
+
+      if (e.key === 'Tab' && activeModalRef.current) {
+        const focusables = activeModalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length > 0) {
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    }
+
+    if (isDecisionModalOpen || isEscalateModalOpen || isResolveModalOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isDecisionModalOpen, isEscalateModalOpen, isResolveModalOpen]);
 
   // Active version calculation
   const latestVersion = versions[0];
@@ -675,6 +734,9 @@ export function ReviewerClient({
               v{activeVersion.version_no}
             </span>
           </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Inspect the content and author decisions, check against brand guidelines, and approve or request changes.
+          </p>
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
             <span>Author: <strong>{submission.author_display_name}</strong></span>
             <span>•</span>
@@ -696,10 +758,10 @@ export function ReviewerClient({
                     setIsResolveModalOpen(true);
                   }}
                   disabled={isSubmittingResolve}
-                  className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                  className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950 min-h-[44px]"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  <span>Request changes</span>
+                  <span>Resolve & request changes</span>
                 </Button>
 
                 <Button
@@ -710,14 +772,14 @@ export function ReviewerClient({
                     setIsResolveModalOpen(true);
                   }}
                   disabled={!canApprove || isSubmittingResolve}
-                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white min-h-[44px]"
                 >
                   <Check className="h-4 w-4" />
-                  <span>Approve</span>
+                  <span>Resolve & approve</span>
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium border border-border">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium border border-border min-h-[44px]">
                 <Clock className="h-3.5 w-3.5 text-purple-600 shrink-0" />
                 <span>Waiting for authorised sign off</span>
               </div>
@@ -734,7 +796,7 @@ export function ReviewerClient({
                     setIsDecisionModalOpen(true);
                   }}
                   disabled={isSubmittingDecision}
-                  className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                  className="gap-1.5 text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950 min-h-[44px]"
                 >
                   <RotateCcw className="h-4 w-4" />
                   <span>Request changes</span>
@@ -748,7 +810,7 @@ export function ReviewerClient({
                       setIsEscalateModalOpen(true);
                     }}
                     disabled={isSubmittingEscalate}
-                    className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
+                    className="gap-1.5 bg-purple-600 hover:bg-purple-700 text-white min-h-[44px]"
                   >
                     <ShieldAlert className="h-4 w-4" />
                     <span>Escalate for sign off</span>
@@ -762,7 +824,7 @@ export function ReviewerClient({
                       setIsDecisionModalOpen(true);
                     }}
                     disabled={!canApprove || isSubmittingDecision}
-                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white min-h-[44px]"
                     title={
                       !canApprove
                         ? 'Reviewers cannot approve their own submissions unless they are an employer'
@@ -770,7 +832,7 @@ export function ReviewerClient({
                     }
                   >
                     <Check className="h-4 w-4" />
-                    <span>Approve</span>
+                    <span>Approve submission</span>
                   </Button>
                 )}
               </div>
@@ -782,7 +844,7 @@ export function ReviewerClient({
                     setEscalateReason('');
                     setIsEscalateModalOpen(true);
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground underline inline-flex items-center gap-1"
+                  className="text-xs text-muted-foreground hover:text-foreground underline inline-flex items-center gap-1 min-h-[44px]"
                 >
                   <ShieldAlert className="h-3 w-3 text-purple-600" />
                   <span>Escalate for authorised sign off</span>
@@ -957,7 +1019,7 @@ export function ReviewerClient({
                   <div className="rounded-lg border border-border bg-muted/10 p-2 flex justify-center">
                     <img
                       src={imageUrl}
-                      alt={submission.image_alt || activeVersion.content || ''}
+                      alt={submission.image_alt || activeVersion.content || 'Uploaded image for brand review'}
                       className="max-h-80 w-auto max-w-full rounded object-contain"
                     />
                   </div>
@@ -1075,6 +1137,7 @@ export function ReviewerClient({
                       </span>
 
                       <span
+                        title="Severity indicates how critical the issue is: High issues need attention before approval, while Medium and Low are recommendations."
                         className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
                           finding.severity === 'high'
                             ? 'bg-destructive/15 text-destructive border-destructive/30'
@@ -1092,7 +1155,11 @@ export function ReviewerClient({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {finding.source === 'ai' && <AiBadge />}
+                      {finding.source === 'ai' && (
+                        <span title="This suggestion was generated by an AI model and needs human review.">
+                          <AiBadge />
+                        </span>
+                      )}
                       {finding.source === 'image_check' && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 select-none">
                           Image check
@@ -1126,14 +1193,34 @@ export function ReviewerClient({
                     </p>
                   </div>
 
-                  {/* Cited Rule or Fact */}
+                  {/* Cited Rule, Fact, or Term */}
                   <div className="p-3 rounded-lg border border-border bg-card/60 text-xs space-y-1">
-                    <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                      <BookOpen className="h-3.5 w-3.5 text-primary" />
-                      <span>Cited: {citation.title}</span>
-                      <span className="text-muted-foreground font-mono text-[11px]">
-                        ({citation.code})
+                    <div className="flex items-center gap-1.5 font-semibold text-foreground flex-wrap">
+                      <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span title="The brand guideline rule, fact, or terminology standard cited for this issue.">
+                        Cited:
                       </span>
+                      {citation.isSensitive ? (
+                        <span
+                          title="Sensitive rule: This brand rule requires review and sign off by an authorised reviewer or employer."
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 border border-purple-300 dark:border-purple-800"
+                        >
+                          <ShieldAlert className="h-3 w-3" />
+                          <span>Sensitive rule {citation.code}</span>
+                        </span>
+                      ) : citation.isTerm ? (
+                        <span
+                          title="Restricted brand terminology standard: words or phrases to avoid in favour of approved brand wording."
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-muted text-muted-foreground border border-border font-mono"
+                        >
+                          TERM
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground font-mono text-[11px]">
+                          Rule {citation.code}
+                        </span>
+                      )}
+                      <span className="text-foreground">— {citation.title}</span>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
                       {citation.body}
@@ -1149,6 +1236,25 @@ export function ReviewerClient({
                     <p className="text-sm text-foreground font-medium">
                       {finding.suggestion}
                     </p>
+                  </div>
+
+                  {/* Confidence Note with tooltip */}
+                  <div
+                    title="Confidence reflects how sure the automated reviewer is about this issue. Lower confidence items need human judgement."
+                    className="text-xs text-muted-foreground flex items-center justify-between"
+                  >
+                    <span>
+                      {finding.confidence < 0.6 ? (
+                        <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                          <span>Confidence: Needs human judgement</span>
+                        </span>
+                      ) : (
+                        <span>
+                          Confidence: {Math.round(finding.confidence * 100)}%
+                        </span>
+                      )}
+                    </span>
                   </div>
 
                   {/* Author Decision Display */}
@@ -1285,11 +1391,16 @@ export function ReviewerClient({
         <div
           role="dialog"
           aria-modal="true"
+          aria-labelledby="decision-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
         >
-          <div className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4">
+          <div
+            ref={decisionModalRef}
+            tabIndex={-1}
+            className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4 focus-visible:outline-none"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">
+              <h3 id="decision-modal-title" className="text-lg font-semibold text-foreground">
                 {decisionType === 'approved'
                   ? 'Approve Submission'
                   : 'Request Changes'}
@@ -1297,7 +1408,8 @@ export function ReviewerClient({
               <button
                 type="button"
                 onClick={() => setIsDecisionModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground text-sm"
+                aria-label="Close dialog"
+                className="text-muted-foreground hover:text-foreground text-sm min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 ✕
               </button>
@@ -1322,7 +1434,7 @@ export function ReviewerClient({
                     value={decisionNote}
                     onChange={(e) => setDecisionNote(e.target.value)}
                     placeholder="Add an optional comment or sign-off note..."
-                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               ) : (
@@ -1348,18 +1460,19 @@ export function ReviewerClient({
                     onChange={(e) => setDecisionNote(e.target.value)}
                     required
                     placeholder="Explain what needs to be changed before this content can be approved..."
-                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setIsDecisionModalOpen(false)}
                   disabled={isSubmittingDecision}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
@@ -1367,11 +1480,11 @@ export function ReviewerClient({
                   type="submit"
                   size="sm"
                   disabled={isSubmittingDecision}
-                  className={
+                  className={`min-h-[44px] ${
                     decisionType === 'approved'
                       ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                       : 'bg-amber-600 hover:bg-amber-700 text-white'
-                  }
+                  }`}
                 >
                   {isSubmittingDecision
                     ? 'Submitting...'
@@ -1390,20 +1503,26 @@ export function ReviewerClient({
         <div
           role="dialog"
           aria-modal="true"
+          aria-labelledby="escalate-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
         >
-          <div className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4">
+          <div
+            ref={escalateModalRef}
+            tabIndex={-1}
+            className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4 focus-visible:outline-none"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-purple-600" />
-                <h3 className="text-lg font-semibold text-foreground">
+                <h3 id="escalate-modal-title" className="text-lg font-semibold text-foreground">
                   Escalate for Authorised Sign Off
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEscalateModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground text-sm"
+                aria-label="Close dialog"
+                className="text-muted-foreground hover:text-foreground text-sm min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 ✕
               </button>
@@ -1428,17 +1547,18 @@ export function ReviewerClient({
                   onChange={(e) => setEscalateReason(e.target.value)}
                   required
                   placeholder="Explain why this post requires authorised sign off (e.g. sensitive claim, health or safety rules, legal wording)..."
-                  className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEscalateModalOpen(false)}
                   disabled={isSubmittingEscalate}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
@@ -1446,7 +1566,7 @@ export function ReviewerClient({
                   type="submit"
                   size="sm"
                   disabled={isSubmittingEscalate || !escalateReason.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                  className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 min-h-[44px]"
                 >
                   <ShieldAlert className="h-4 w-4" />
                   <span>
@@ -1466,11 +1586,16 @@ export function ReviewerClient({
         <div
           role="dialog"
           aria-modal="true"
+          aria-labelledby="resolve-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
         >
-          <div className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4">
+          <div
+            ref={resolveModalRef}
+            tabIndex={-1}
+            className="w-full max-w-lg bg-card border border-border rounded-xl p-6 shadow-xl space-y-4 focus-visible:outline-none"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">
+              <h3 id="resolve-modal-title" className="text-lg font-semibold text-foreground">
                 {resolveDecision === 'approved'
                   ? 'Authorise & Approve Submission'
                   : 'Request Changes (Resolution)'}
@@ -1478,7 +1603,8 @@ export function ReviewerClient({
               <button
                 type="button"
                 onClick={() => setIsResolveModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground text-sm"
+                aria-label="Close dialog"
+                className="text-muted-foreground hover:text-foreground text-sm min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 ✕
               </button>
@@ -1504,7 +1630,7 @@ export function ReviewerClient({
                     value={resolveNote}
                     onChange={(e) => setResolveNote(e.target.value)}
                     placeholder="Add an optional comment or sign-off note..."
-                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               ) : (
@@ -1518,30 +1644,31 @@ export function ReviewerClient({
                     .
                   </p>
                   <label
-                    htmlFor="resolve-note"
+                    htmlFor="resolve-feedback-note"
                     className="text-xs font-semibold text-foreground block"
                   >
                     Feedback note (required):
                   </label>
                   <textarea
-                    id="resolve-note"
+                    id="resolve-feedback-note"
                     rows={4}
                     value={resolveNote}
                     onChange={(e) => setResolveNote(e.target.value)}
                     required
                     placeholder="Explain what needs to be changed before this content can be approved..."
-                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="w-full text-xs p-2.5 rounded-lg border border-input bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setIsResolveModalOpen(false)}
                   disabled={isSubmittingResolve}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
@@ -1553,11 +1680,11 @@ export function ReviewerClient({
                     (resolveDecision === 'changes_requested' &&
                       !resolveNote.trim())
                   }
-                  className={
+                  className={`min-h-[44px] ${
                     resolveDecision === 'approved'
                       ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                       : 'bg-amber-600 hover:bg-amber-700 text-white'
-                  }
+                  }`}
                 >
                   {isSubmittingResolve
                     ? 'Submitting...'

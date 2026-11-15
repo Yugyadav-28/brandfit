@@ -140,11 +140,13 @@ export function SubmitForm({
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {errorMessage && (
           <div
+            id="submit-form-error"
             role="alert"
-            className="p-4 rounded-md bg-destructive/15 border border-destructive/30 text-destructive text-sm"
+            aria-live="polite"
+            className="p-4 rounded-md bg-destructive/15 border border-destructive/30 text-destructive text-sm font-medium"
           >
             {errorMessage}
           </div>
@@ -208,7 +210,7 @@ export function SubmitForm({
 
         {/* Submission Title */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
             <label
               htmlFor="submission-title"
               className="block text-sm font-medium text-foreground"
@@ -219,7 +221,7 @@ export function SubmitForm({
               type="button"
               onClick={handleFillExample}
               disabled={isSubmitting}
-              className="text-xs text-primary hover:underline font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              className="text-xs text-primary hover:underline font-medium min-h-[44px] inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
               Try an example post
             </button>
@@ -231,6 +233,7 @@ export function SubmitForm({
             onChange={(e) => setTitle(e.target.value)}
             disabled={isSubmitting}
             placeholder="e.g. FreshBrew Gold Launch Social Post"
+            aria-describedby={errorMessage ? 'submit-form-error' : undefined}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             required
           />
@@ -246,6 +249,7 @@ export function SubmitForm({
               Content <span className="text-destructive">*</span>
             </label>
             <span
+              id="content-char-counter"
               aria-live="polite"
               className={`text-xs font-mono ${
                 isOverLimit
@@ -265,11 +269,18 @@ export function SubmitForm({
             disabled={isSubmitting}
             rows={14}
             placeholder="Write or paste your brand content here to be checked against guidelines and approved facts..."
+            aria-describedby={`content-char-counter ${
+              isOverLimit ? 'content-limit-error' : ''
+            } ${errorMessage ? 'submit-form-error' : ''}`.trim()}
             className="w-full rounded-md border border-input bg-background p-3 text-sm font-mono leading-relaxed shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             required
           />
           {isOverLimit && (
-            <p className="text-xs text-destructive mt-1 font-medium">
+            <p
+              id="content-limit-error"
+              role="alert"
+              className="text-xs text-destructive mt-1 font-medium"
+            >
               Your content exceeds the 10,000 character maximum. Please trim it
               before submitting.
             </p>
@@ -338,7 +349,7 @@ export function SubmitForm({
               !title.trim() ||
               !content.trim()
             }
-            className="min-w-44"
+            className="min-w-44 min-h-[44px] text-sm font-semibold"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
@@ -347,7 +358,7 @@ export function SubmitForm({
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
-                <span>Submit & Review</span>
+                <span>Check brand rules</span>
                 <ArrowRight className="h-4 w-4" />
               </span>
             )}

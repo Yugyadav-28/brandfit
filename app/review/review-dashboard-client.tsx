@@ -92,7 +92,10 @@ export function ReviewDashboardClient({
               {activeCompany?.role ? activeCompany.role.replace('_', ' ') : 'Reviewer'}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+          <p className="text-sm text-muted-foreground mt-1">
+            Review submitted drafts, check author decisions, and give feedback or approval.
+          </p>
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
             <Building2 className="h-4 w-4" />
             <span>Workspace: <strong>{activeCompany?.companyName}</strong></span>
           </p>
@@ -108,7 +111,7 @@ export function ReviewDashboardClient({
               id="company-select"
               value={activeCompanyId}
               onChange={(e) => router.push(`/review?companyId=${e.target.value}`)}
-              className="text-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="text-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {companies.map((c) => (
                 <option key={c.companyId} value={c.companyId}>
@@ -245,8 +248,8 @@ export function ReviewDashboardClient({
                       {/* Action */}
                       <td className="px-5 py-4 text-right">
                         {isAuthorised ? (
-                          <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
-                            <Link href={`/review/${sub.id}`}>Sign off</Link>
+                          <Button asChild size="sm" className="bg-purple-600 hover:bg-purple-700 text-white min-h-[44px]">
+                            <Link href={`/review/${sub.id}`}>Sign off submission</Link>
                           </Button>
                         ) : (
                           <span className="text-xs text-muted-foreground italic px-2.5 py-1 rounded bg-muted/60 border border-border">
@@ -394,8 +397,8 @@ export function ReviewDashboardClient({
 
                       {/* Action */}
                       <td className="px-5 py-4 text-right">
-                        <Button asChild size="sm">
-                          <Link href={`/review/${sub.id}`}>Review</Link>
+                        <Button asChild size="sm" className="min-h-[44px]">
+                          <Link href={`/review/${sub.id}`}>Review submission</Link>
                         </Button>
                       </td>
                     </tr>
@@ -412,7 +415,7 @@ export function ReviewDashboardClient({
         <button
           type="button"
           onClick={() => setIsDecidedExpanded(!isDecidedExpanded)}
-          className="w-full flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/40 transition-colors text-left"
+          className="w-full flex items-center justify-between p-4 bg-muted/20 hover:bg-muted/40 transition-colors text-left min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-expanded={isDecidedExpanded}
         >
           <div className="flex items-center gap-2">
@@ -481,8 +484,8 @@ export function ReviewDashboardClient({
                           {formatDate(sub.updated_at || sub.created_at)}
                         </td>
                         <td className="py-2.5 text-right">
-                          <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                            <Link href={`/review/${sub.id}`}>Details</Link>
+                          <Button asChild variant="outline" size="sm" className="min-h-[44px] text-xs">
+                            <Link href={`/review/${sub.id}`}>View submission</Link>
                           </Button>
                         </td>
                       </tr>
