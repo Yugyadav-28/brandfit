@@ -103,7 +103,7 @@ export function GetStartedCard({
             type="button"
             onClick={handleDismiss}
             aria-label="Dismiss Get started guide"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 min-h-[44px] rounded-md border border-border hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
           >
             <span>Dismiss</span>
             <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -198,7 +198,7 @@ export function GetStartedCard({
                     type="button"
                     onClick={handleCopy}
                     aria-label={`Copy join code ${joinCode}`}
-                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 min-h-[44px] rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                       copied
                         ? "bg-emerald-600 text-white border-emerald-600"
                         : "bg-background hover:bg-muted border-input text-foreground"
@@ -222,7 +222,7 @@ export function GetStartedCard({
                   asChild
                   size="sm"
                   variant={step.isDone ? "ghost" : "outline"}
-                  className={`text-xs h-8 px-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                  className={`text-xs min-h-[44px] px-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                     step.isDone
                       ? "text-muted-foreground hover:text-foreground"
                       : "border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground font-medium"

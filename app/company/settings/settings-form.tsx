@@ -86,7 +86,9 @@ export function SettingsForm({ companyId, initialName }: SettingsFormProps) {
       {/* Error Notification */}
       {error && (
         <div
+          id="company-name-error"
           role="alert"
+          aria-live="polite"
           className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm"
         >
           <AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -127,7 +129,7 @@ export function SettingsForm({ companyId, initialName }: SettingsFormProps) {
                 minLength={2}
                 maxLength={60}
                 className="focus-visible:ring-2 focus-visible:ring-ring"
-                aria-describedby="company-name-help"
+                aria-describedby={error ? "company-name-error company-name-help" : "company-name-help"}
               />
               <p id="company-name-help" className="text-xs text-muted-foreground">
                 Must be between 2 and 60 characters.
@@ -137,9 +139,10 @@ export function SettingsForm({ companyId, initialName }: SettingsFormProps) {
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button
                 type="submit"
+                className="min-h-[44px]"
                 disabled={isPending || name.trim().length < 2 || name.trim().length > 60 || name.trim() === currentName}
               >
-                {isPending ? "Saving..." : "Save"}
+                {isPending ? "Saving..." : "Save changes"}
               </Button>
             </div>
           </form>

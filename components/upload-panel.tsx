@@ -296,7 +296,7 @@ export function UploadPanel({
             role="tab"
             aria-selected={activeTab === "text"}
             onClick={() => setActiveTab("text")}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm rounded-t-lg transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] font-medium text-sm rounded-t-lg transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === "text"
                 ? "border-primary text-primary bg-primary/5 font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
@@ -311,7 +311,7 @@ export function UploadPanel({
             role="tab"
             aria-selected={activeTab === "document"}
             onClick={() => setActiveTab("document")}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm rounded-t-lg transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] font-medium text-sm rounded-t-lg transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === "document"
                 ? "border-primary text-primary bg-primary/5 font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
@@ -326,7 +326,7 @@ export function UploadPanel({
             role="tab"
             aria-selected={activeTab === "image"}
             onClick={() => setActiveTab("image")}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm rounded-t-lg transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] font-medium text-sm rounded-t-lg transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeTab === "image"
                 ? "border-primary text-primary bg-primary/5 font-semibold"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
@@ -371,7 +371,9 @@ export function UploadPanel({
         <form onSubmit={handleDocSubmit} className="space-y-6">
           {docError && (
             <div
+              id="doc-upload-error"
               role="alert"
+              aria-live="polite"
               className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2.5"
             >
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -380,7 +382,11 @@ export function UploadPanel({
           )}
 
           {docProgress && (
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-2.5">
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-2.5"
+            >
               <Loader2 className="h-4 w-4 animate-spin shrink-0" />
               <span>{docProgress}</span>
             </div>
@@ -397,6 +403,7 @@ export function UploadPanel({
               onChange={(e) => setDocTitle(e.target.value)}
               placeholder="e.g. Q3 Brand Campaign Overview"
               disabled={isUploadingDoc}
+              aria-describedby={docError ? "doc-upload-error" : undefined}
               required
             />
           </div>
@@ -413,6 +420,7 @@ export function UploadPanel({
               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleDocFileChange}
               disabled={isUploadingDoc}
+              aria-describedby={docError ? "doc-upload-error" : undefined}
               className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer border border-input rounded-md p-1.5 bg-background shadow-sm"
               required
             />
@@ -435,7 +443,7 @@ export function UploadPanel({
           <Button
             type="submit"
             disabled={isUploadingDoc || !docFile}
-            className="w-full sm:w-auto flex items-center justify-center gap-2"
+            className="w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-2"
           >
             {isUploadingDoc && <Loader2 className="h-4 w-4 animate-spin" />}
             {isUploadingDoc ? "Checking document..." : "Check document"}
@@ -448,7 +456,9 @@ export function UploadPanel({
         <form onSubmit={handleImgSubmit} className="space-y-6">
           {imgError && (
             <div
+              id="img-upload-error"
               role="alert"
+              aria-live="polite"
               className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2.5"
             >
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -457,7 +467,11 @@ export function UploadPanel({
           )}
 
           {imgProgress && (
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-2.5">
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-2.5"
+            >
               <Loader2 className="h-4 w-4 animate-spin shrink-0" />
               <span>{imgProgress}</span>
             </div>
@@ -474,6 +488,7 @@ export function UploadPanel({
               onChange={(e) => setImgTitle(e.target.value)}
               placeholder="e.g. Social Announcement Graphic"
               disabled={isUploadingImg}
+              aria-describedby={imgError ? "img-upload-error" : undefined}
               required
             />
           </div>
@@ -490,6 +505,7 @@ export function UploadPanel({
               accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
               onChange={handleImgFileChange}
               disabled={isUploadingImg}
+              aria-describedby={imgError ? "img-upload-error" : undefined}
               className="block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer border border-input rounded-md p-1.5 bg-background shadow-sm"
               required
             />
@@ -512,7 +528,7 @@ export function UploadPanel({
               placeholder="e.g. Close up of our product packaging against a solid blue background"
               disabled={isUploadingImg}
               required
-              aria-describedby="img-alt-help"
+              aria-describedby={imgError ? "img-upload-error img-alt-help" : "img-alt-help"}
             />
             {/* Help text */}
             <p id="img-alt-help" className="text-xs text-muted-foreground">
@@ -524,7 +540,7 @@ export function UploadPanel({
           <Button
             type="submit"
             disabled={isImageCheckDisabled}
-            className="w-full sm:w-auto flex items-center justify-center gap-2"
+            className="w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-2"
           >
             {isUploadingImg && <Loader2 className="h-4 w-4 animate-spin" />}
             {isUploadingImg ? "Checking image..." : "Check image"}

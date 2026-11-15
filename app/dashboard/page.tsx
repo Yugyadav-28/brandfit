@@ -295,7 +295,7 @@ async function DashboardContent() {
         "Submitting a draft tests your guidelines against real content and triggers your first automated review.",
       isDone: submissionsCount >= 1,
       href: "/submit",
-      buttonLabel: submissionsCount >= 1 ? "Submit another" : "Submit post",
+      buttonLabel: submissionsCount >= 1 ? "Send another post" : "Send post for review",
     },
   ];
 
@@ -403,11 +403,11 @@ async function DashboardContent() {
             body="When team members submit content, it will appear here for review. You can create a test submission or invite teammates to start submitting."
             action={
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <Button asChild size="sm">
-                  <Link href="/submit">Submit a post</Link>
+                <Button asChild size="sm" className="min-h-[44px]">
+                  <Link href="/submit">Send post for review</Link>
                 </Button>
                 {isEmployer && (
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="outline" size="sm" className="min-h-[44px]">
                     <Link href="/company/members">Invite team members</Link>
                   </Button>
                 )}
@@ -422,7 +422,7 @@ async function DashboardContent() {
                   <tr>
                     <th scope="col" className="px-5 py-3 font-semibold">Title</th>
                     <th scope="col" className="px-5 py-3 font-semibold w-44">Author</th>
-                    <th scope="col" className="px-5 py-3 font-semibold w-36">Submitted</th>
+                    <th scope="col" className="px-5 py-3 font-semibold w-36">Date submitted</th>
                     <th scope="col" className="px-5 py-3 font-semibold w-28 text-center">Findings</th>
                     <th scope="col" className="px-5 py-3 font-semibold text-right w-28">Action</th>
                   </tr>
@@ -496,7 +496,7 @@ async function DashboardContent() {
               heading="No team activity yet"
               body="Share the company join code with your teammates so they can join and start submitting content."
               action={
-                <Button asChild size="sm">
+                <Button asChild size="sm" className="min-h-[44px]">
                   <Link href="/company/members">Manage members &amp; get join code</Link>
                 </Button>
               }
@@ -517,7 +517,7 @@ async function DashboardContent() {
                       <th scope="col" className="px-5 py-3 font-semibold text-center w-24">Edited</th>
                       <th scope="col" className="px-5 py-3 font-semibold text-center w-24">Rejected</th>
                       <th scope="col" className="px-5 py-3 font-semibold text-center w-40">
-                        <span title="Number of rule codes that appear in the first version of two or more of this person's submissions">
+                        <span title="Number of rules that appear in the first version of two or more of this person's posts">
                           Repeated mistakes
                         </span>
                       </th>
@@ -682,7 +682,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {icon}
       {label}

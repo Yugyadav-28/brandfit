@@ -232,7 +232,7 @@ export function InsightsDashboardClient({
         >
           <Link
             href="/dashboard/insights?range=7d"
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-3 py-1.5 min-h-[44px] inline-flex items-center rounded-md transition-all ${
               range === "7d"
                 ? "bg-card text-foreground font-semibold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -243,7 +243,7 @@ export function InsightsDashboardClient({
           </Link>
           <Link
             href="/dashboard/insights?range=30d"
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-3 py-1.5 min-h-[44px] inline-flex items-center rounded-md transition-all ${
               range === "30d"
                 ? "bg-card text-foreground font-semibold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -254,7 +254,7 @@ export function InsightsDashboardClient({
           </Link>
           <Link
             href="/dashboard/insights?range=all"
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-3 py-1.5 min-h-[44px] inline-flex items-center rounded-md transition-all ${
               range === "all"
                 ? "bg-card text-foreground font-semibold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -314,12 +314,12 @@ export function InsightsDashboardClient({
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             {range !== "all" && (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="min-h-[44px]">
                 <Link href="/dashboard/insights?range=all">View all time data</Link>
               </Button>
             )}
-            <Button asChild size="sm">
-              <Link href="/submit">Submit new content</Link>
+            <Button asChild size="sm" className="min-h-[44px]">
+              <Link href="/submit">Send post for review</Link>
             </Button>
           </div>
         </div>
@@ -335,7 +335,7 @@ export function InsightsDashboardClient({
             tableContent={
               <AccessibleTable
                 caption="Top broken rules in first version of submissions"
-                headers={["Rule Code", "Rule Title", "First-Version Mistakes"]}
+                headers={["Rule", "Rule Title", "First-Version Mistakes"]}
                 rows={brokenRules.map((r) => [r.code, r.title, r.count])}
               />
             }
@@ -406,13 +406,13 @@ export function InsightsDashboardClient({
             onToggle={() => toggleView("repeatMistakes")}
             tableContent={
               <AccessibleTable
-                caption="Author repeat mistake statistics and repeated rule codes"
+                caption="Author repeat mistake statistics and repeated rules"
                 headers={[
                   "Author",
                   "Total Mistakes",
                   "Repeated Mistakes",
                   "Repeat Rate",
-                  "Repeated Codes",
+                  "Repeated Rules",
                 ]}
                 rows={repeatStats.map((s) => [
                   s.display_name,
@@ -485,7 +485,7 @@ export function InsightsDashboardClient({
                 {/* Repeated Rule Codes Listed Below Chart */}
                 <div className="pt-2 border-t text-xs space-y-1.5">
                   <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[11px]">
-                    Repeated rule codes by author (appear in 2+ posts):
+                    Repeated rules by author (appear in 2+ posts):
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {repeatStats.map((s) => (
@@ -526,7 +526,7 @@ export function InsightsDashboardClient({
               <AccessibleTable
                 caption="Rejection rate per rule code with clarity status"
                 headers={[
-                  "Rule Code",
+                  "Rule",
                   "Rule Title",
                   "Decided Findings",
                   "Rejected Findings",
@@ -806,7 +806,7 @@ export function InsightsDashboardClient({
                           size="sm"
                           disabled={isLoading}
                           onClick={() => handleSuggest(rule)}
-                          className="gap-2 border-purple-500/40 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10"
+                          className="gap-2 border-purple-500/40 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 min-h-[44px]"
                         >
                           {isLoading ? (
                             <>
@@ -991,7 +991,7 @@ export function InsightsDashboardClient({
                             size="sm"
                             disabled={isApplying}
                             onClick={() => handleDismiss(rule.id)}
-                            className="text-xs"
+                            className="text-xs min-h-[44px]"
                           >
                             Dismiss
                           </Button>
@@ -1000,7 +1000,7 @@ export function InsightsDashboardClient({
                             size="sm"
                             disabled={isApplying}
                             onClick={() => handleApply(rule, suggestion)}
-                            className="text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                            className="text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white min-h-[44px]"
                           >
                             {isApplying ? (
                               <>
@@ -1055,7 +1055,7 @@ function ChartCard({
             variant="outline"
             size="sm"
             onClick={onToggle}
-            className="h-8 gap-1.5 text-xs font-medium"
+            className="min-h-[44px] gap-1.5 text-xs font-medium"
             aria-pressed={isTable}
           >
             {isTable ? (

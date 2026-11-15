@@ -38,6 +38,17 @@ export function NavClient({
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  // Close mobile menu on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
   const isLinkActive = (href: string) => {
     if (href === "/") {
       return pathname === "/";
@@ -133,7 +144,7 @@ export function NavClient({
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation-menu"
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            className="p-2 rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-border"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-border"
           >
             {mobileMenuOpen ? (
               <X className="h-5 w-5" aria-hidden="true" />
@@ -173,7 +184,7 @@ export function NavClient({
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     active
                       ? "bg-primary/10 text-primary font-semibold border-l-4 border-primary pl-2.5"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -205,12 +216,12 @@ export function NavClient({
               </div>
             ) : (
               <div className="flex flex-col gap-2 pt-1">
-                <Button asChild variant="outline" className="w-full justify-center">
+                <Button asChild variant="outline" className="w-full justify-center min-h-[44px]">
                   <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                     Sign in
                   </Link>
                 </Button>
-                <Button asChild className="w-full justify-center">
+                <Button asChild className="w-full justify-center min-h-[44px]">
                   <Link href="/auth/sign-up" onClick={() => setMobileMenuOpen(false)}>
                     Sign up
                   </Link>

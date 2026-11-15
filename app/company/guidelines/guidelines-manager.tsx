@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SensitiveRuleBadge, TermHelpTooltip } from "@/components/ai-badge";
 import {
   saveRuleAction,
   deleteRuleAction,
@@ -122,6 +123,21 @@ export function GuidelinesManager({
     id: string;
     identifier: string; // code, preferred, or colour name
   } | null>(null);
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (ruleModalOpen) setRuleModalOpen(false);
+        if (factModalOpen) setFactModalOpen(false);
+        if (termModalOpen) setTermModalOpen(false);
+        if (colourModalOpen) setColourModalOpen(false);
+        if (deleteConfirm) setDeleteConfirm(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [ruleModalOpen, factModalOpen, termModalOpen, colourModalOpen, deleteConfirm]);
 
   // Handler: Load sample brand kit
   const handleLoadSampleBrandKit = () => {
@@ -598,7 +614,7 @@ export function GuidelinesManager({
                 <thead className="bg-muted/60 text-muted-foreground border-b text-xs uppercase tracking-wider">
                   <tr>
                     <th scope="col" className="px-6 py-3 font-semibold w-28">
-                      Code
+                      Rule
                     </th>
                     <th scope="col" className="px-6 py-3 font-semibold w-36">
                       Category
@@ -626,9 +642,7 @@ export function GuidelinesManager({
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-foreground">{rule.title}</span>
                           {rule.needs_escalation && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                              Sensitive
-                            </span>
+                            <SensitiveRuleBadge />
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
@@ -834,7 +848,10 @@ export function GuidelinesManager({
                 <thead className="bg-muted/60 text-muted-foreground border-b text-xs uppercase tracking-wider">
                   <tr>
                     <th scope="col" className="px-6 py-3 font-semibold w-48">
-                      Preferred
+                      <span className="inline-flex items-center gap-1.5">
+                        <span>Preferred</span>
+                        <TermHelpTooltip />
+                      </span>
                     </th>
                     <th scope="col" className="px-6 py-3 font-semibold w-64">
                       Avoid
@@ -1143,7 +1160,7 @@ export function GuidelinesManager({
                   htmlFor="rule-needs-escalation"
                   className="text-sm font-normal cursor-pointer"
                 >
-                  Needs authorised reviewer sign off
+                  Sensitive rule (requires authorised reviewer or employer sign-off)
                 </Label>
               </div>
 
@@ -1152,10 +1169,11 @@ export function GuidelinesManager({
                   type="button"
                   variant="outline"
                   onClick={() => setRuleModalOpen(false)}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending} className="min-h-[44px]">
                   {isPending ? "Saving..." : editingRule ? "Save Changes" : "Create Rule"}
                 </Button>
               </div>
@@ -1252,10 +1270,11 @@ export function GuidelinesManager({
                   type="button"
                   variant="outline"
                   onClick={() => setFactModalOpen(false)}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending} className="min-h-[44px]">
                   {isPending ? "Saving..." : editingFact ? "Save Changes" : "Create Fact"}
                 </Button>
               </div>
@@ -1333,10 +1352,11 @@ export function GuidelinesManager({
                   type="button"
                   variant="outline"
                   onClick={() => setTermModalOpen(false)}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending} className="min-h-[44px]">
                   {isPending ? "Saving..." : editingTerm ? "Save Changes" : "Create Term"}
                 </Button>
               </div>
@@ -1416,10 +1436,11 @@ export function GuidelinesManager({
                   type="button"
                   variant="outline"
                   onClick={() => setColourModalOpen(false)}
+                  className="min-h-[44px]"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending} className="min-h-[44px]">
                   {isPending ? "Saving..." : "Add Colour"}
                 </Button>
               </div>
@@ -1451,6 +1472,7 @@ export function GuidelinesManager({
                 variant="outline"
                 onClick={() => setDeleteConfirm(null)}
                 disabled={isPending}
+                className="min-h-[44px]"
               >
                 Cancel
               </Button>
@@ -1459,6 +1481,7 @@ export function GuidelinesManager({
                 variant="destructive"
                 onClick={handleConfirmDelete}
                 disabled={isPending}
+                className="min-h-[44px]"
               >
                 {isPending ? "Deleting..." : "Delete"}
               </Button>

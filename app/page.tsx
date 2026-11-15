@@ -55,13 +55,13 @@ function LandingPage() {
 
         {/* ── 3. Action Buttons ── */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md mx-auto">
-          <Button asChild size="lg" className="w-full sm:w-auto font-semibold">
+          <Button asChild size="lg" className="w-full sm:w-auto font-semibold min-h-[44px]">
             <Link href="/auth/login">Log in</Link>
           </Button>
-          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto min-h-[44px]">
             <Link href="/auth/sign-up">Sign up</Link>
           </Button>
-          <Button asChild size="lg" variant="ghost" className="w-full sm:w-auto">
+          <Button asChild size="lg" variant="ghost" className="w-full sm:w-auto min-h-[44px]">
             <Link href="/disclosure" className="inline-flex items-center gap-1.5">
               How AI is used
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
