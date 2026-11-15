@@ -138,7 +138,12 @@ export async function PATCH(
       );
     }
 
-    // 5. Update finding
+    // 5. Idempotent check: sending the same decision twice changes nothing and returns success
+    if (finding.decision === decision) {
+      return NextResponse.json(finding);
+    }
+
+    // 6. Update finding
     const updatePayload: Record<string, unknown> = {
       decision,
       decision_note: note?.trim() || null,
@@ -162,7 +167,7 @@ export async function PATCH(
       );
     }
 
-    // 6. Log finding_decided
+    // 7. Log finding_decided
     await logAudit({
       companyId: submission.company_id,
       userId: user.id,
@@ -179,12 +184,16 @@ export async function PATCH(
     if (error?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
+    if (error?.status === 401 || error?.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (error?.message?.startsWith('Forbidden') || error?.name === 'ForbiddenError') {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error('Unexpected error in PATCH /api/findings/[id]:', error);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in PATCH /api/findings/[id]:`, error?.message || error);
     return NextResponse.json(
-      { error: 'Failed to update finding decision. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

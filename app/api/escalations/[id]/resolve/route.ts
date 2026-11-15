@@ -89,15 +89,15 @@ export async function POST(
       );
     }
 
-    // 2. Escalation must be open
+    // Check escalation status (safe repeated actions)
     if (escalation.status !== 'open') {
       return NextResponse.json(
-        { error: 'Escalation is not open' },
-        { status: 400 },
+        { error: 'Escalation has already been resolved' },
+        { status: 409 },
       );
     }
 
-    // 3. Fetch submission to verify company membership
+    // 2. Fetch submission to verify company membership and status
     const { data: submission, error: subError } = await admin
       .from('submissions')
       .select('*')
@@ -119,7 +119,24 @@ export async function POST(
       );
     }
 
-    // 4. Auth check: Only authorised_reviewer or employer
+    // Check submission status
+    if (submission.status === 'approved') {
+      return NextResponse.json(
+        { error: 'Submission has already been approved' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status !== 'escalated') {
+      return NextResponse.json(
+        {
+          error: `Submission is not in escalated state (current status: ${submission.status})`,
+        },
+        { status: 409 },
+      );
+    }
+
+    // 3. Auth check: Only authorised_reviewer or employer
     const user = await requireUser();
     await requireMember(submission.company_id, [
       'authorised_reviewer',
@@ -130,7 +147,7 @@ export async function POST(
     const trimmedNote =
       typeof note === 'string' && note.trim().length > 0 ? note.trim() : null;
 
-    // 5. Update the escalation (status, resolved_by, resolution_note, resolved_at)
+    // 4. Update the escalation (status, resolved_by, resolution_note, resolved_at)
     const { data: updatedEscalation, error: updateEscError } = await admin
       .from('escalations')
       .update({
@@ -151,7 +168,7 @@ export async function POST(
       );
     }
 
-    // 6. Set submission status to approved or changes_requested
+    // 5. Set submission status to approved or changes_requested
     const { data: updatedSub, error: updateSubError } = await admin
       .from('submissions')
       .update({
@@ -170,7 +187,7 @@ export async function POST(
       );
     }
 
-    // 7. Insert a row in approvals
+    // 6. Insert a row in approvals
     const { data: approvalRow, error: approvalError } = await admin
       .from('approvals')
       .insert({
@@ -190,7 +207,7 @@ export async function POST(
       );
     }
 
-    // 8. Log escalation_resolved
+    // 7. Log escalation_resolved
     await logAudit({
       companyId: submission.company_id,
       userId: user.id,
@@ -220,9 +237,10 @@ export async function POST(
     if (err?.message?.includes('Forbidden') || err?.name === 'ForbiddenError') {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error('Unexpected error in POST /api/escalations/[id]/resolve:', err);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/escalations/[id]/resolve:`, err?.message || err);
     return NextResponse.json(
-      { error: 'Failed to resolve escalation. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

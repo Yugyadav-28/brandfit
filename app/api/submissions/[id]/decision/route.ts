@@ -87,6 +87,35 @@ export async function POST(
       );
     }
 
+    // Check submission status first (repeated and concurrent action safety)
+    if (submission.status === 'approved') {
+      return NextResponse.json(
+        { error: 'Submission has already been approved' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status === 'escalated') {
+      return NextResponse.json(
+        { error: 'Submission is currently escalated and waiting for authorised sign off' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status === 'draft') {
+      return NextResponse.json(
+        { error: 'Submission is still a draft and has not been sent for review' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status !== 'in_review') {
+      return NextResponse.json(
+        { error: `Submission cannot be decided because it is not currently in review (current status: ${submission.status})` },
+        { status: 409 },
+      );
+    }
+
     // 2. Auth: reviewer or employer of the submission's company
     const user = await requireUser();
     const { role } = await requireMember(submission.company_id, [
@@ -199,9 +228,10 @@ export async function POST(
     if (err?.message?.includes('Forbidden') || err?.name === 'ForbiddenError') {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error('Unexpected error in POST /api/submissions/[id]/decision:', err);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/submissions/[id]/decision:`, err?.message || err);
     return NextResponse.json(
-      { error: 'Failed to record decision. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

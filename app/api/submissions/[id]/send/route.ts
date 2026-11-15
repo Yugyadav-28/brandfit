@@ -40,6 +40,28 @@ export async function POST(
       );
     }
 
+    // Check submission status first (safe repeated actions)
+    if (submission.status === 'in_review') {
+      return NextResponse.json(
+        { error: 'Submission is already in review' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status === 'approved') {
+      return NextResponse.json(
+        { error: 'Submission has already been approved' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status === 'escalated') {
+      return NextResponse.json(
+        { error: 'Submission is currently escalated and waiting for authorised sign off' },
+        { status: 409 },
+      );
+    }
+
     // 2. Auth checks: caller must be author
     const user = await requireUser();
 
@@ -117,15 +139,19 @@ export async function POST(
       status: 'in_review',
     });
   } catch (err: any) {
+    if (err?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
     if (err?.status === 401 || err?.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (err?.message?.includes('Forbidden')) {
+    if (err?.message?.includes('Forbidden') || err?.name === 'ForbiddenError') {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error('Unexpected error in POST /api/submissions/[id]/send:', err);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/submissions/[id]/send:`, err?.message || err);
     return NextResponse.json(
-      { error: 'Failed to send submission for review. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

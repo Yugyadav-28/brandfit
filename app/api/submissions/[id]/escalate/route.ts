@@ -73,6 +73,30 @@ export async function POST(
       );
     }
 
+    // Check submission status first (safe repeated actions)
+    if (submission.status === 'escalated') {
+      return NextResponse.json(
+        { error: 'Submission is already escalated' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status === 'approved') {
+      return NextResponse.json(
+        { error: 'Submission has already been approved' },
+        { status: 409 },
+      );
+    }
+
+    if (submission.status !== 'in_review') {
+      return NextResponse.json(
+        {
+          error: `Submission must be in review to be escalated (current status: ${submission.status})`,
+        },
+        { status: 409 },
+      );
+    }
+
     // 2. Auth check: Only a reviewer, an authorised_reviewer or an employer of that company
     const user = await requireUser();
     await requireMember(submission.company_id, [
@@ -80,14 +104,6 @@ export async function POST(
       'authorised_reviewer',
       'employer',
     ] as any);
-
-    // 3. Return 409 if already escalated
-    if (submission.status === 'escalated') {
-      return NextResponse.json(
-        { error: 'Submission is already escalated' },
-        { status: 409 },
-      );
-    }
 
     const { data: existingEscalation } = await admin
       .from('escalations')
@@ -103,20 +119,10 @@ export async function POST(
       );
     }
 
-    // 4. Submission must be in_review
-    if (submission.status !== 'in_review') {
-      return NextResponse.json(
-        {
-          error: `Submission must be in_review to be escalated (current status: ${submission.status})`,
-        },
-        { status: 400 },
-      );
-    }
-
     const trimmedReason = reason.trim();
     const now = new Date().toISOString();
 
-    // 5. Insert an open row in escalations
+    // 3. Insert an open row in escalations
     const { data: escalation, error: escError } = await admin
       .from('escalations')
       .insert({
@@ -136,7 +142,7 @@ export async function POST(
       );
     }
 
-    // 6. Set submission status to escalated
+    // 4. Set submission status to escalated
     const { data: updatedSub, error: updateError } = await admin
       .from('submissions')
       .update({
@@ -155,7 +161,7 @@ export async function POST(
       );
     }
 
-    // 7. Log escalated with the reason
+    // 5. Log escalated with the reason
     await logAudit({
       companyId: submission.company_id,
       userId: user.id,
@@ -185,9 +191,10 @@ export async function POST(
     if (err?.message?.includes('Forbidden') || err?.name === 'ForbiddenError') {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error('Unexpected error in POST /api/submissions/[id]/escalate:', err);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/submissions/[id]/escalate:`, err?.message || err);
     return NextResponse.json(
-      { error: 'Failed to escalate submission. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

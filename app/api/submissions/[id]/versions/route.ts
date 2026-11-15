@@ -100,9 +100,10 @@ export async function POST(
       console.error('Error querying latest version:', verQueryError);
     }
 
-    const nextVersionNo = (latestVersion?.version_no ?? 0) + 1;
+    let nextVersionNo = (latestVersion?.version_no ?? 0) + 1;
 
-    // 4. Create the next version
+    // 4. Create the next version with concurrent action safety
+    let createdVersion: { id: string } | null = null;
     const { data: newVersion, error: insError } = await admin
       .from('versions')
       .insert({
@@ -113,11 +114,58 @@ export async function POST(
       .select('id')
       .single();
 
-    if (insError || !newVersion) {
-      console.error('Error creating new version:', insError);
+    if (insError) {
+      const isDuplicate =
+        insError.code === '23505' ||
+        insError.message?.toLowerCase().includes('duplicate') ||
+        insError.message?.toLowerCase().includes('unique');
+
+      if (isDuplicate) {
+        // Retry once with the next number
+        const { data: freshLatest } = await admin
+          .from('versions')
+          .select('version_no')
+          .eq('submission_id', id)
+          .order('version_no', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        nextVersionNo = Math.max((freshLatest?.version_no ?? 0) + 1, nextVersionNo + 1);
+
+        const { data: retryVersion, error: retryError } = await admin
+          .from('versions')
+          .insert({
+            submission_id: id,
+            version_no: nextVersionNo,
+            content,
+          })
+          .select('id')
+          .single();
+
+        if (retryError || !retryVersion) {
+          console.error('Retry creating version failed with conflict:', retryError?.code || retryError?.message);
+          return NextResponse.json(
+            { error: 'A version conflict occurred due to concurrent edits. Please try again.' },
+            { status: 409 },
+          );
+        }
+        createdVersion = retryVersion;
+      } else {
+        console.error('Error creating new version:', insError?.message || insError);
+        const requestId = crypto.randomUUID();
+        return NextResponse.json(
+          { error: 'An unexpected error occurred. Please try again.', requestId },
+          { status: 500 },
+        );
+      }
+    } else {
+      createdVersion = newVersion;
+    }
+
+    if (!createdVersion) {
       return NextResponse.json(
-        { error: 'Failed to create new version' },
-        { status: 500 },
+        { error: 'A version conflict occurred. Please try again.' },
+        { status: 409 },
       );
     }
 
@@ -136,22 +184,23 @@ export async function POST(
 
     // 6. Return the new versionId and versionNo
     return NextResponse.json(
-      { versionId: newVersion.id, versionNo: nextVersionNo },
+      { versionId: createdVersion.id, versionNo: nextVersionNo },
       { status: 201 },
     );
   } catch (error: any) {
     if (error?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
+    if (error?.status === 401 || error?.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (error?.message?.startsWith('Forbidden') || error?.name === 'ForbiddenError') {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error(
-      'Unexpected error in POST /api/submissions/[id]/versions:',
-      error,
-    );
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/submissions/[id]/versions:`, error?.message || error);
     return NextResponse.json(
-      { error: 'Failed to create new version. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }
