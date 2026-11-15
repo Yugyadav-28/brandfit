@@ -3,7 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
+import { GetStartedCard, type GetStartedStep } from "@/components/get-started-card";
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -137,6 +139,31 @@ async function fetchDashboardData(companyId: string) {
     allFindings,
   );
 
+  // 7. Get setup counts for "Get started" checklist
+  const [
+    { count: rulesCount },
+    { count: factsCount },
+    { count: termsCount },
+    { count: coloursCount },
+  ] = await Promise.all([
+    admin
+      .from("rules")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId),
+    admin
+      .from("facts")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId),
+    admin
+      .from("terms")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId),
+    admin
+      .from("brand_colours")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId),
+  ]);
+
   return {
     inReviewCount,
     escalatedCount,
@@ -145,6 +172,11 @@ async function fetchDashboardData(companyId: string) {
     membersCount: membersCount ?? 0,
     waitingSubmissions,
     employeeStats,
+    rulesCount: rulesCount ?? 0,
+    factsCount: factsCount ?? 0,
+    termsCount: termsCount ?? 0,
+    coloursCount: coloursCount ?? 0,
+    submissionsCount: submissions.length,
   };
 }
 
@@ -199,7 +231,75 @@ async function DashboardContent() {
     membersCount,
     waitingSubmissions,
     employeeStats,
+    rulesCount,
+    factsCount,
+    termsCount,
+    coloursCount,
+    submissionsCount,
   } = await fetchDashboardData(companyId);
+
+  // Check dismissal cookie for employers
+  const cookieStore = await cookies();
+  const isDismissed =
+    cookieStore.get(`brandfit_get_started_dismissed_${companyId}`)?.value === "true";
+
+  const getStartedSteps: GetStartedStep[] = [
+    {
+      id: "rules",
+      title: "Add your brand rules",
+      whyItMatters:
+        "Rules define your brand guidelines so AI checks can flag violations and protect your company voice.",
+      isDone: rulesCount >= 1,
+      href: "/company/guidelines",
+      buttonLabel: rulesCount >= 1 ? "Edit rules" : "Add rules",
+    },
+    {
+      id: "facts",
+      title: "Add approved facts",
+      whyItMatters:
+        "Facts let BrandFit catch wrong numbers, outdated claims, and unverified company statements.",
+      isDone: factsCount >= 1,
+      href: "/company/guidelines?tab=facts",
+      buttonLabel: factsCount >= 1 ? "Edit facts" : "Add facts",
+    },
+    {
+      id: "terms",
+      title: "Add preferred and avoided terms",
+      whyItMatters:
+        "Approved terminology keeps your company's vocabulary consistent and flags phrases to avoid.",
+      isDone: termsCount >= 1,
+      href: "/company/guidelines?tab=terms",
+      buttonLabel: termsCount >= 1 ? "Edit terms" : "Add terms",
+    },
+    {
+      id: "colours",
+      title: "Add brand colours",
+      whyItMatters:
+        "Brand colours allow image reviews to verify visual palette consistency and color compliance.",
+      isDone: coloursCount >= 1,
+      href: "/company/guidelines?tab=palette",
+      buttonLabel: coloursCount >= 1 ? "Edit colours" : "Add colours",
+    },
+    {
+      id: "team",
+      title: "Invite your team",
+      whyItMatters:
+        "Inviting your team enables creators and reviewers to collaborate and submit draft content.",
+      isDone: membersCount > 1,
+      isInviteStep: true,
+    },
+    {
+      id: "submit",
+      title: "Submit a first post",
+      whyItMatters:
+        "Submitting a draft tests your guidelines against real content and triggers your first automated review.",
+      isDone: submissionsCount >= 1,
+      href: "/submit",
+      buttonLabel: submissionsCount >= 1 ? "Submit another" : "Submit post",
+    },
+  ];
+
+  const allGetStartedDone = getStartedSteps.every((s) => s.isDone);
 
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full p-6 md:p-8 space-y-10">
@@ -232,6 +332,15 @@ async function DashboardContent() {
           </div>
         )}
       </div>
+
+      {/* ── Get started card (for employers, shown until all steps done or dismissed) ── */}
+      {isEmployer && !allGetStartedDone && !isDismissed && (
+        <GetStartedCard
+          companyId={companyId}
+          joinCode={company.join_code}
+          steps={getStartedSteps}
+        />
+      )}
 
       {/* ── Stat Cards ── */}
       <section>
