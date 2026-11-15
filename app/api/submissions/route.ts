@@ -128,12 +128,16 @@ export async function POST(request: NextRequest) {
     if (error?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
+    if (error?.status === 401 || error?.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (error?.message?.startsWith('Forbidden') || error?.name === 'ForbiddenError') {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error('Unexpected error in POST /api/submissions:', error);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/submissions:`, error?.message || error);
     return NextResponse.json(
-      { error: 'Failed to create submission. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

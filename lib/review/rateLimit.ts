@@ -1,50 +1,54 @@
-// In-memory sliding window rate limiter: 10 review runs per user per 10 minutes
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_RUNS = 10;
+import 'server-only';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const userReviewTimestamps = new Map<string, number[]>();
+export const RATE_LIMIT_MESSAGE =
+  'You have run many reviews in a short time. Please wait a few minutes and try again.';
 
 export interface RateLimitResult {
   allowed: boolean;
-  remaining: number;
-  retryAfterSeconds?: number;
+  message?: string;
+  count?: number;
 }
 
-export function checkReviewRateLimit(userId: string): RateLimitResult {
-  const now = Date.now();
-  const timestamps = userReviewTimestamps.get(userId) || [];
-  
-  // Prune timestamps older than 10 minutes
-  const validTimestamps = timestamps.filter((t) => now - t < WINDOW_MS);
+/**
+ * Checks if the user has reached the limit of 10 review runs
+ * (review_run and upload_reviewed audit rows) per 10 minutes,
+ * counted from audit_log so it works on serverless hosting.
+ */
+export async function checkReviewRateLimit(
+  userId: string,
+): Promise<RateLimitResult> {
+  try {
+    const admin = createAdminClient();
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-  if (validTimestamps.length >= MAX_RUNS) {
-    const oldestTimestamp = validTimestamps[0];
-    const retryAfterSeconds = Math.max(
-      1,
-      Math.ceil((oldestTimestamp + WINDOW_MS - now) / 1000),
-    );
-    userReviewTimestamps.set(userId, validTimestamps);
-    return {
-      allowed: false,
-      remaining: 0,
-      retryAfterSeconds,
-    };
-  }
+    const { count, error } = await admin
+      .from('audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('action', ['review_run', 'upload_reviewed'])
+      .gte('created_at', tenMinutesAgo);
 
-  validTimestamps.push(now);
-  userReviewTimestamps.set(userId, validTimestamps);
-
-  // Periodically cleanup stale users if the map grows
-  if (userReviewTimestamps.size > 1000) {
-    for (const [key, list] of userReviewTimestamps.entries()) {
-      if (list.every((t) => now - t >= WINDOW_MS)) {
-        userReviewTimestamps.delete(key);
-      }
+    if (error) {
+      console.error('Error querying audit_log for review rate limit:', error);
+      // If error querying, allow the request so we don't break functionality
+      return { allowed: true };
     }
-  }
 
-  return {
-    allowed: true,
-    remaining: MAX_RUNS - validTimestamps.length,
-  };
+    if (count !== null && count >= 10) {
+      return {
+        allowed: false,
+        message: RATE_LIMIT_MESSAGE,
+        count,
+      };
+    }
+
+    return {
+      allowed: true,
+      count: count ?? 0,
+    };
+  } catch (err) {
+    console.error('Unexpected error checking review rate limit:', err);
+    return { allowed: true };
+  }
 }

@@ -90,9 +90,10 @@ export async function GET(
     if (err?.message?.includes('Forbidden')) {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error('Unexpected error in GET /api/submissions/[id]/comments:', err);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in GET /api/submissions/[id]/comments:`, err?.message || err);
     return NextResponse.json(
-      { error: 'Failed to load comments. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }
@@ -243,9 +244,10 @@ export async function POST(
     if (err?.message?.includes('Forbidden')) {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
-    console.error('Unexpected error in POST /api/submissions/[id]/comments:', err);
+    const requestId = crypto.randomUUID();
+    console.error(`[${requestId}] Unexpected error in POST /api/submissions/[id]/comments:`, err?.message || err);
     return NextResponse.json(
-      { error: 'Failed to add comment. Please try again.' },
+      { error: 'An unexpected error occurred. Please try again.', requestId },
       { status: 500 },
     );
   }

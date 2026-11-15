@@ -6,6 +6,7 @@ import { validateUpload } from "@/lib/media/validate";
 import { extractDocument } from "@/lib/media/extractDocument";
 import { docChecks } from "@/lib/media/docChecks";
 import { runReview } from "@/lib/review/runReview";
+import { checkReviewRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/review/rateLimit";
 
 export const maxDuration = 60;
 
@@ -48,6 +49,15 @@ export async function POST(request: NextRequest) {
 
     const user = await requireUser();
     await requireMember(companyId.trim());
+
+    // Rate limit: 10 review runs (review_run and upload_reviewed) per user per 10 minutes
+    const rateLimit = await checkReviewRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: RATE_LIMIT_MESSAGE },
+        { status: 429 },
+      );
+    }
 
     // Validate size and real content magic bytes
     const validation = await validateUpload(file, "document");
