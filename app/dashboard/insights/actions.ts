@@ -22,6 +22,35 @@ export interface SuggestClearerWordingResult {
   error?: string;
 }
 
+const SuggestClearerWordingInputSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  rule: z.object({
+    id: z.string().min(1, "Rule ID is required."),
+    code: z.string().trim().min(1, "Rule code is required."),
+    title: z.string().trim().min(1, "Rule title is required."),
+    body: z.string().trim().default(""),
+    category: z.string().optional(),
+  }),
+  rejectionReasons: z.array(z.string()).default([]),
+  rejectedQuotes: z.array(z.string()).default([]),
+});
+
+const ApplyRuleRewriteInputSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  ruleId: z.string().min(1, "Rule ID is required."),
+  newTitle: z
+    .string()
+    .trim()
+    .min(2, "Rule title must be between 2 and 120 characters.")
+    .max(120, "Rule title must be between 2 and 120 characters."),
+  newBody: z
+    .string()
+    .trim()
+    .min(5, "Rule instructions must be at least 5 characters.")
+    .max(2000, "Rule instructions must be 2000 characters or fewer."),
+  explanation: z.string().optional(),
+});
+
 /**
  * Server action to generate clearer rule wording using Gemini API.
  * Employers only.
@@ -39,6 +68,19 @@ export async function suggestClearerWordingAction(
   rejectedQuotes: string[],
 ): Promise<SuggestClearerWordingResult> {
   try {
+    const validatedInput = SuggestClearerWordingInputSchema.safeParse({
+      companyId,
+      rule,
+      rejectionReasons,
+      rejectedQuotes,
+    });
+    if (!validatedInput.success) {
+      return {
+        success: false,
+        error: validatedInput.error.issues[0]?.message || "Invalid input parameters.",
+      };
+    }
+
     const user = await requireUser();
     await requireMember(companyId, "employer");
 
@@ -184,9 +226,25 @@ export async function applyRuleRewriteAction(
   explanation?: string,
 ): Promise<ApplyRuleRewriteResult> {
   try {
+    const validatedInput = ApplyRuleRewriteInputSchema.safeParse({
+      companyId,
+      ruleId,
+      newTitle,
+      newBody,
+      explanation,
+    });
+    if (!validatedInput.success) {
+      return {
+        success: false,
+        error: validatedInput.error.issues[0]?.message || "Invalid input parameters.",
+      };
+    }
+
     const user = await requireUser();
     await requireMember(companyId, "employer");
     const admin = createAdminClient();
+
+    const { newTitle: validTitle, newBody: validBody } = validatedInput.data;
 
     // 1. Fetch current rule
     const { data: oldRule, error: fetchErr } = await admin
@@ -204,8 +262,8 @@ export async function applyRuleRewriteAction(
     const { error: updateErr } = await admin
       .from("rules")
       .update({
-        title: newTitle.trim(),
-        body: newBody.trim(),
+        title: validTitle,
+        body: validBody,
       })
       .eq("id", ruleId)
       .eq("company_id", companyId);
@@ -225,8 +283,8 @@ export async function applyRuleRewriteAction(
         code: oldRule.code,
         old_title: oldRule.title,
         old_body: oldRule.body,
-        new_title: newTitle.trim(),
-        new_body: newBody.trim(),
+        new_title: validTitle,
+        new_body: validBody,
         explanation: explanation || null,
       },
     });

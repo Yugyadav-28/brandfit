@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireMember, requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
@@ -9,6 +10,7 @@ import kit from "@/seed/sample-brand-kit.json";
 export interface ActionResult {
   success?: boolean;
   error?: string;
+  fieldErrors?: Record<string, string>;
   insertedRules?: number;
   insertedFacts?: number;
   insertedTerms?: number;
@@ -23,6 +25,84 @@ const VALID_CATEGORIES = [
   "accessibility",
 ] as const;
 
+const SaveRuleSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  id: z.string().optional(),
+  code: z
+    .string()
+    .trim()
+    .min(1, "Please enter a rule code.")
+    .max(20, "Rule code must be 20 characters or fewer."),
+  category: z.enum(VALID_CATEGORIES, {
+    message: "Please select a category (tone, terminology, claims, facts, visual, or accessibility).",
+  }),
+  title: z
+    .string()
+    .trim()
+    .min(2, "Rule title must be between 2 and 120 characters.")
+    .max(120, "Rule title must be between 2 and 120 characters."),
+  body: z
+    .string()
+    .trim()
+    .min(5, "Rule instructions must be at least 5 characters.")
+    .max(2000, "Rule instructions must be 2000 characters or fewer."),
+});
+
+const DeleteRuleSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  ruleId: z.string().min(1, "Rule ID is required."),
+  code: z.string().min(1, "Rule code is required."),
+});
+
+const SaveFactSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  id: z.string().optional(),
+  code: z
+    .string()
+    .trim()
+    .min(1, "Please enter a fact code.")
+    .max(20, "Fact code must be 20 characters or fewer."),
+  statement: z
+    .string()
+    .trim()
+    .min(5, "Fact statement must be at least 5 characters.")
+    .max(2000, "Fact statement must be 2000 characters or fewer."),
+  source: z.string().trim().max(200, "Source reference must be 200 characters or fewer.").optional().nullable(),
+  updated_on: z.string().optional(),
+});
+
+const DeleteFactSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  factId: z.string().min(1, "Fact ID is required."),
+  code: z.string().min(1, "Fact code is required."),
+});
+
+const SaveTermSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  id: z.string().optional(),
+  preferred: z
+    .string()
+    .trim()
+    .min(1, "Please enter the preferred term.")
+    .max(100, "Preferred term must be 100 characters or fewer."),
+  avoid: z
+    .string()
+    .trim()
+    .min(1, "Please enter the term to avoid.")
+    .max(100, "Term to avoid must be 100 characters or fewer."),
+  note: z.string().trim().max(500, "Usage note must be 500 characters or fewer.").optional().nullable(),
+});
+
+const DeleteTermSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  termId: z.string().min(1, "Term ID is required."),
+  preferred: z.string().min(1, "Preferred term is required."),
+});
+
+const LoadSampleBrandKitSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+});
+
 export async function saveRuleAction(
   companyId: string,
   data: {
@@ -33,23 +113,20 @@ export async function saveRuleAction(
     body: string;
   },
 ): Promise<ActionResult> {
+  const validated = SaveRuleSchema.safeParse({ companyId, ...data });
+  if (!validated.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of validated.error.issues) {
+      const field = issue.path[issue.path.length - 1] as string;
+      if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+    }
+    return { error: validated.error.issues[0]?.message || "Invalid rule data.", fieldErrors };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
-  const code = data.code?.trim();
-  const category = data.category?.trim();
-  const title = data.title?.trim();
-  const body = data.body?.trim();
-
-  if (!code) return { error: "Please enter a rule code." };
-  if (!category || !VALID_CATEGORIES.includes(category as (typeof VALID_CATEGORIES)[number])) {
-    return {
-      error:
-        "Please select a category (tone, terminology, claims, facts, visual, or accessibility).",
-    };
-  }
-  if (!title) return { error: "Please enter a title for the rule." };
-  if (!body) return { error: "Please enter the rule instructions." };
+  const { code, category, title, body, id } = validated.data;
 
   // Check code uniqueness per company
   const { data: existing } = await admin
@@ -59,13 +136,14 @@ export async function saveRuleAction(
     .ilike("code", code)
     .maybeSingle();
 
-  if (existing && existing.id !== data.id) {
+  if (existing && existing.id !== id) {
     return {
       error: `Rule code "${code}" is already taken in your company. Please choose a different code.`,
+      fieldErrors: { code: `Rule code "${code}" is already taken.` },
     };
   }
 
-  if (data.id) {
+  if (id) {
     // Update existing rule
     const { error } = await admin
       .from("rules")
@@ -75,7 +153,7 @@ export async function saveRuleAction(
         title,
         body,
       })
-      .eq("id", data.id)
+      .eq("id", id)
       .eq("company_id", companyId);
 
     if (error) {
@@ -119,6 +197,11 @@ export async function deleteRuleAction(
   ruleId: string,
   code: string,
 ): Promise<ActionResult> {
+  const validated = DeleteRuleSchema.safeParse({ companyId, ruleId, code });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid input." };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
@@ -157,16 +240,21 @@ export async function saveFactAction(
     updated_on?: string;
   },
 ): Promise<ActionResult> {
+  const validated = SaveFactSchema.safeParse({ companyId, ...data });
+  if (!validated.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of validated.error.issues) {
+      const field = issue.path[issue.path.length - 1] as string;
+      if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+    }
+    return { error: validated.error.issues[0]?.message || "Invalid fact data.", fieldErrors };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
-  const code = data.code?.trim();
-  const statement = data.statement?.trim();
-  const source = data.source?.trim() || null;
-  const updated_on = data.updated_on || new Date().toISOString().split("T")[0];
-
-  if (!code) return { error: "Please enter a fact code." };
-  if (!statement) return { error: "Please enter the factual statement." };
+  const { code, statement, source, id } = validated.data;
+  const updated_on = validated.data.updated_on || new Date().toISOString().split("T")[0];
 
   // Check code uniqueness per company
   const { data: existing } = await admin
@@ -176,22 +264,23 @@ export async function saveFactAction(
     .ilike("code", code)
     .maybeSingle();
 
-  if (existing && existing.id !== data.id) {
+  if (existing && existing.id !== id) {
     return {
       error: `Fact code "${code}" is already taken in your company. Please choose a different code.`,
+      fieldErrors: { code: `Fact code "${code}" is already taken.` },
     };
   }
 
-  if (data.id) {
+  if (id) {
     const { error } = await admin
       .from("facts")
       .update({
         code,
         statement,
-        source,
+        source: source || null,
         updated_on,
       })
-      .eq("id", data.id)
+      .eq("id", id)
       .eq("company_id", companyId);
 
     if (error) {
@@ -203,7 +292,7 @@ export async function saveFactAction(
       company_id: companyId,
       code,
       statement,
-      source,
+      source: source || null,
       updated_on,
     });
 
@@ -220,7 +309,7 @@ export async function saveFactAction(
     detail: {
       code,
       statement,
-      source,
+      source: source || null,
       updated_on,
     },
   });
@@ -234,6 +323,11 @@ export async function deleteFactAction(
   factId: string,
   code: string,
 ): Promise<ActionResult> {
+  const validated = DeleteFactSchema.safeParse({ companyId, factId, code });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid input." };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
@@ -272,25 +366,30 @@ export async function saveTermAction(
     note?: string;
   },
 ): Promise<ActionResult> {
+  const validated = SaveTermSchema.safeParse({ companyId, ...data });
+  if (!validated.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of validated.error.issues) {
+      const field = issue.path[issue.path.length - 1] as string;
+      if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+    }
+    return { error: validated.error.issues[0]?.message || "Invalid term data.", fieldErrors };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
-  const preferred = data.preferred?.trim();
-  const avoid = data.avoid?.trim();
-  const note = data.note?.trim() || null;
+  const { preferred, avoid, note, id } = validated.data;
 
-  if (!preferred) return { error: "Please enter the preferred term." };
-  if (!avoid) return { error: "Please enter the term to avoid." };
-
-  if (data.id) {
+  if (id) {
     const { error } = await admin
       .from("terms")
       .update({
         preferred,
         avoid,
-        note,
+        note: note || null,
       })
-      .eq("id", data.id)
+      .eq("id", id)
       .eq("company_id", companyId);
 
     if (error) {
@@ -302,7 +401,7 @@ export async function saveTermAction(
       company_id: companyId,
       preferred,
       avoid,
-      note,
+      note: note || null,
     });
 
     if (error) {
@@ -318,7 +417,7 @@ export async function saveTermAction(
     detail: {
       preferred,
       avoid,
-      note,
+      note: note || null,
     },
   });
 
@@ -331,6 +430,11 @@ export async function deleteTermAction(
   termId: string,
   preferred: string,
 ): Promise<ActionResult> {
+  const validated = DeleteTermSchema.safeParse({ companyId, termId, preferred });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid input." };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
@@ -363,6 +467,11 @@ export async function deleteTermAction(
 export async function loadSampleBrandKitAction(
   companyId: string,
 ): Promise<ActionResult> {
+  const validated = LoadSampleBrandKitSchema.safeParse({ companyId });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid company ID." };
+  }
+
   const member = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
