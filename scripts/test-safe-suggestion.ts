@@ -1,4 +1,7 @@
-import { safeSuggestion, SAFE_SUGGESTION_FALLBACK } from '../lib/review/safeSuggestion';
+import type * as SafeSuggestionMod from '../lib/review/safeSuggestion';
+
+const modPath = '../lib/review/safeSuggestion.ts';
+const { safeSuggestion, SAFE_SUGGESTION_FALLBACK } = (await import(modPath)) as typeof SafeSuggestionMod;
 
 interface TestCase {
   name: string;
