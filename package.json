@@ -9,7 +9,10 @@
     "test:insights": "node --experimental-strip-types scripts/test-insights.ts",
     "test:rls": "node --experimental-strip-types scripts/test-rls.ts 2>/dev/null || ./node_modules/.bin/jiti scripts/test-rls.ts",
     "test:media": "node --experimental-strip-types scripts/test-media.ts",
-    "test:color": "node --experimental-strip-types scripts/test-color.ts"
+    "test:color": "node --experimental-strip-types scripts/test-color.ts",
+    "eval": "node --experimental-strip-types scripts/eval.ts 2>/dev/null || ./node_modules/.bin/jiti scripts/eval.ts",
+    "backfill": "node --experimental-strip-types scripts/backfill-embeddings.ts 2>/dev/null || ./node_modules/.bin/jiti scripts/backfill-embeddings.ts",
+    "backfill:embeddings": "node --experimental-strip-types scripts/backfill-embeddings.ts 2>/dev/null || ./node_modules/.bin/jiti scripts/backfill-embeddings.ts"
   },
   "dependencies": {
     "@google/genai": "^3.0.0",
