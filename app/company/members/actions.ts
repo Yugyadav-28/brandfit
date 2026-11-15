@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
@@ -12,11 +13,24 @@ import {
 
 export { switchMemberRoleAction, removeMemberAction, regenerateJoinCodeAction };
 
+const SetMemberRoleSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  targetUserId: z.string().min(1, "Target user ID is required."),
+  newRole: z.enum(["employee", "reviewer", "authorised_reviewer"], {
+    message: "Role must be employee, reviewer, or authorised reviewer.",
+  }),
+});
+
 export async function setMemberRoleAction(
   companyId: string,
   targetUserId: string,
   newRole: "employee" | "reviewer" | "authorised_reviewer",
 ) {
+  const validated = SetMemberRoleSchema.safeParse({ companyId, targetUserId, newRole });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid role or user." };
+  }
+
   const actor = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 

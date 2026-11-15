@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireMember, requireUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import {
@@ -151,6 +152,27 @@ export async function loadSampleBrandKitAction(
   return res;
 }
 
+const SaveBrandColourSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Please enter a colour name.")
+    .max(50, "Colour name must be 50 characters or fewer."),
+  hex: z
+    .string()
+    .trim()
+    .transform((val) => (val.startsWith("#") ? val : `#${val}`).toUpperCase())
+    .refine((val) => /^#[0-9A-F]{6}$/i.test(val), {
+      message: "Invalid hex colour code. Format must be #RRGGBB (e.g. #3B82F6).",
+    }),
+});
+
+const DeleteBrandColourSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  id: z.string().min(1, "Colour ID is required."),
+});
+
 /**
  * Saves a new brand colour for the company.
  */
@@ -162,29 +184,16 @@ export async function saveBrandColourAction(
   },
 ): Promise<ActionResult & { colourId?: string }> {
   try {
+    const validated = SaveBrandColourSchema.safeParse({ companyId, ...data });
+    if (!validated.success) {
+      return { error: validated.error.issues[0]?.message || "Invalid brand colour data." };
+    }
+
     await requireMember(companyId, "employer");
     const user = await requireUser();
     const admin = createAdminClient();
 
-    const name = data.name?.trim();
-    let hex = data.hex?.trim() || "";
-
-    if (!name) {
-      return { error: "Please enter a colour name." };
-    }
-
-    if (!hex) {
-      return { error: "Please enter a hex colour code." };
-    }
-
-    if (!hex.startsWith("#")) {
-      hex = "#" + hex;
-    }
-    hex = hex.toUpperCase();
-
-    if (!/^#[0-9A-F]{6}$/i.test(hex)) {
-      return { error: "Invalid hex colour code. Format must be #RRGGBB (e.g. #3B82F6)." };
-    }
+    const { name, hex } = validated.data;
 
     const { data: inserted, error } = await admin
       .from("brand_colours")
@@ -224,13 +233,14 @@ export async function deleteBrandColourAction(
   id: string,
 ): Promise<ActionResult> {
   try {
+    const validated = DeleteBrandColourSchema.safeParse({ companyId, id });
+    if (!validated.success) {
+      return { error: validated.error.issues[0]?.message || "Colour ID is required." };
+    }
+
     await requireMember(companyId, "employer");
     const user = await requireUser();
     const admin = createAdminClient();
-
-    if (!id) {
-      return { error: "Colour ID is required." };
-    }
 
     const { data: existing } = await admin
       .from("brand_colours")

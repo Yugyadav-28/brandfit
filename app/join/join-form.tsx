@@ -46,8 +46,19 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
               required
               autoFocus={!initialCode}
               className="uppercase tracking-widest font-mono focus-visible:ring-2 focus-visible:ring-ring"
-              aria-describedby={state?.error ? "join-error" : undefined}
+              aria-describedby={
+                state?.fieldErrors?.joinCode
+                  ? "join-code-field-error"
+                  : state?.error
+                    ? "join-error"
+                    : undefined
+              }
             />
+            {state?.fieldErrors?.joinCode && (
+              <p id="join-code-field-error" className="text-xs text-destructive font-medium">
+                {state.fieldErrors.joinCode}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-2">
@@ -61,7 +72,15 @@ export function JoinForm({ initialCode = "", defaultDisplayName = "" }: JoinForm
               required
               autoFocus={!!initialCode}
               className="focus-visible:ring-2 focus-visible:ring-ring"
+              aria-describedby={
+                state?.fieldErrors?.displayName ? "display-name-field-error" : undefined
+              }
             />
+            {state?.fieldErrors?.displayName && (
+              <p id="display-name-field-error" className="text-xs text-destructive font-medium">
+                {state.fieldErrors.displayName}
+              </p>
+            )}
           </div>
 
           {state?.error && (

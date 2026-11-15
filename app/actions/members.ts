@@ -2,6 +2,7 @@
 
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
@@ -24,11 +25,30 @@ export interface ActionResult {
   newCode?: string;
 }
 
+const SwitchMemberRoleSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  targetUserId: z.string().min(1, "Target user ID is required."),
+});
+
+const RemoveMemberSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  targetUserId: z.string().min(1, "Target user ID is required."),
+});
+
+const RegenerateJoinCodeSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+});
+
 // 1. Switch Role between employee and reviewer
 export async function switchMemberRoleAction(
   companyId: string,
   targetUserId: string,
 ): Promise<ActionResult> {
+  const validated = SwitchMemberRoleSchema.safeParse({ companyId, targetUserId });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid input." };
+  }
+
   const actor = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
@@ -97,6 +117,11 @@ export async function removeMemberAction(
   companyId: string,
   targetUserId: string,
 ): Promise<ActionResult> {
+  const validated = RemoveMemberSchema.safeParse({ companyId, targetUserId });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid input." };
+  }
+
   const actor = await requireMember(companyId, "employer");
   const admin = createAdminClient();
 
@@ -161,6 +186,11 @@ export async function removeMemberAction(
 export async function regenerateJoinCodeAction(
   companyId: string,
 ): Promise<ActionResult> {
+  const validated = RegenerateJoinCodeSchema.safeParse({ companyId });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid input." };
+  }
+
   await requireMember(companyId, "employer");
   const admin = createAdminClient();
 

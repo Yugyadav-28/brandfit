@@ -3,6 +3,7 @@
 import crypto from "crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireUser, requireMember } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
@@ -20,18 +21,56 @@ function generateJoinCode(): string {
 
 export type ActionState = {
   error?: string;
+  fieldErrors?: Record<string, string>;
 };
+
+const CreateCompanySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Company name must be between 2 and 60 characters.")
+    .max(60, "Company name must be between 2 and 60 characters."),
+});
+
+const JoinCompanySchema = z.object({
+  joinCode: z
+    .string()
+    .trim()
+    .length(6, "Join code must be exactly 6 characters.")
+    .regex(/^[0-9A-Za-z]{6}$/, "Join code must be 6 letters or numbers."),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Please enter your display name.")
+    .max(60, "Display name must be 60 characters or fewer."),
+});
+
+const UpdateCompanyNameSchema = z.object({
+  companyId: z.string().min(1, "Company ID is required."),
+  newName: z
+    .string()
+    .trim()
+    .min(2, "Company name must be between 2 and 60 characters.")
+    .max(60, "Company name must be between 2 and 60 characters."),
+});
 
 export async function createCompanyAction(
   _prevState: ActionState | null,
   formData: FormData,
 ): Promise<ActionState> {
   const user = await requireUser();
-  const name = formData.get("name") as string | null;
+  const rawName = formData.get("name");
 
-  if (!name || !name.trim()) {
-    return { error: "Please enter a company name." };
+  const validated = CreateCompanySchema.safeParse({ name: rawName });
+  if (!validated.success) {
+    const issue = validated.error.issues[0];
+    return {
+      error: issue?.message || "Invalid company name.",
+      fieldErrors: { name: issue?.message || "Invalid company name." },
+    };
   }
+
+  const name = validated.data.name;
 
   const admin = createAdminClient();
   let joinCode = generateJoinCode();
@@ -52,7 +91,7 @@ export async function createCompanyAction(
   const { data: company, error: companyError } = await admin
     .from("companies")
     .insert({
-      name: name.trim(),
+      name,
       join_code: joinCode,
       owner_id: user.id,
     })
@@ -94,22 +133,33 @@ export async function joinCompanyAction(
   formData: FormData,
 ): Promise<ActionState> {
   const user = await requireUser();
-  const joinCode = formData.get("joinCode") as string | null;
-  const displayName = formData.get("displayName") as string | null;
+  const rawJoinCode = formData.get("joinCode");
+  const rawDisplayName = formData.get("displayName");
 
-  if (!joinCode || !joinCode.trim()) {
-    return { error: "Please enter a join code." };
+  const validated = JoinCompanySchema.safeParse({
+    joinCode: rawJoinCode,
+    displayName: rawDisplayName,
+  });
+
+  if (!validated.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of validated.error.issues) {
+      const field = issue.path[0] as string;
+      if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+    }
+    return {
+      error: validated.error.issues[0]?.message || "Invalid input.",
+      fieldErrors,
+    };
   }
 
-  if (!displayName || !displayName.trim()) {
-    return { error: "Please enter your display name." };
-  }
+  const { joinCode, displayName } = validated.data;
 
   const admin = createAdminClient();
   const { data: company, error: findError } = await admin
     .from("companies")
     .select("id, name, join_code")
-    .ilike("join_code", joinCode.trim())
+    .ilike("join_code", joinCode)
     .maybeSingle();
 
   if (findError) {
@@ -133,7 +183,7 @@ export async function joinCompanyAction(
       company_id: company.id,
       user_id: user.id,
       role: "employee",
-      display_name: displayName.trim(),
+      display_name: displayName,
     });
 
     if (memberError) {
@@ -146,7 +196,7 @@ export async function joinCompanyAction(
       userId: user.id,
       action: "member_joined",
       detail: {
-        display_name: displayName.trim(),
+        display_name: displayName,
         role: "employee",
       },
     });
@@ -159,12 +209,13 @@ export async function updateCompanyNameAction(
   companyId: string,
   newName: string,
 ): Promise<{ success?: boolean; error?: string; newName?: string }> {
-  const member = await requireMember(companyId, "employer");
-  const trimmed = (newName || "").trim();
-
-  if (trimmed.length < 2 || trimmed.length > 60) {
-    return { error: "Company name must be between 2 and 60 characters." };
+  const validated = UpdateCompanyNameSchema.safeParse({ companyId, newName });
+  if (!validated.success) {
+    return { error: validated.error.issues[0]?.message || "Invalid company name." };
   }
+
+  const member = await requireMember(companyId, "employer");
+  const trimmed = validated.data.newName;
 
   const admin = createAdminClient();
 
