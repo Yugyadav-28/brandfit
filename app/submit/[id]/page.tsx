@@ -118,6 +118,25 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
   const latestApproval = approvalRes.data ?? null;
   const latestEscalation = escalationRes.data ?? null;
 
+  let isCut = false;
+  if (submission.source_type === 'document') {
+    if (allVersions.some((v) => (v.content?.length || 0) >= 10000)) {
+      isCut = true;
+    } else {
+      const { data: auditLog } = await admin
+        .from('audit_logs')
+        .select('detail')
+        .eq('action', 'upload_reviewed')
+        .eq('company_id', submission.company_id)
+        .contains('detail', { submissionId: id })
+        .limit(1)
+        .maybeSingle();
+      if ((auditLog?.detail as any)?.truncated === true) {
+        isCut = true;
+      }
+    }
+  }
+
   return (
     <SubmissionReviewClient
       submission={{
@@ -126,7 +145,13 @@ async function ReviewContent({ params, searchParams }: ContentProps) {
         status: submission.status,
         company_id: submission.company_id,
         author_id: submission.author_id,
+        source_type: submission.source_type || 'text',
+        source_filename: submission.source_filename || null,
+        image_path: submission.image_path || null,
+        image_alt: submission.image_alt || null,
+        check_notes: submission.check_notes || null,
       }}
+      isCut={isCut}
       initialVersions={versions}
       initialFindings={findings}
       rules={rules}

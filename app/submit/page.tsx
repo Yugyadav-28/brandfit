@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requireUser, getMyMemberships } from '@/lib/auth';
 import { SubmitForm } from './submit-form';
 import { Button } from '@/components/ui/button';
+import { UploadPanel } from '@/components/upload-panel';
 
 interface SubmitContentProps {
   searchParams: Promise<{ companyId?: string }>;
@@ -46,10 +47,16 @@ async function SubmitContent({ searchParams }: SubmitContentProps) {
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 sm:p-8 shadow-sm">
-      <SubmitForm
+      <UploadPanel
+        companyId={preselected}
         companies={companyOptions}
         defaultCompanyId={preselected}
-      />
+      >
+        <SubmitForm
+          companies={companyOptions}
+          defaultCompanyId={preselected}
+        />
+      </UploadPanel>
     </div>
   );
 }
