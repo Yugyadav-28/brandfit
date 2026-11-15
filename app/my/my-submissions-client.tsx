@@ -159,10 +159,10 @@ export function MySubmissionsClient({
           </p>
         </div>
 
-        <Button asChild className="gap-2">
+        <Button asChild className="gap-2 min-h-[44px]">
           <Link href="/submit">
             <PlusCircle className="h-4 w-4" />
-            <span>New Submission</span>
+            <span>New submission</span>
           </Link>
         </Button>
       </div>
@@ -184,7 +184,7 @@ export function MySubmissionsClient({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Top rule codes flagged in your submissions. Focus on these guidelines to write cleaner, faster-approved content.
+          Top rules flagged in your submissions. Focus on these guidelines to write cleaner, faster-approved content.
         </p>
 
         {topMistakes.length === 0 ? (
@@ -210,7 +210,7 @@ export function MySubmissionsClient({
                       #{index + 1}
                     </span>
                     <span className="font-mono font-bold text-sm text-foreground">
-                      {mistake.rule_code}
+                      Rule {mistake.rule_code}
                     </span>
                   </div>
                   <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
@@ -250,7 +250,7 @@ export function MySubmissionsClient({
                   key={st}
                   type="button"
                   onClick={() => setFilterStatus(st)}
-                  className={`px-3 py-1 rounded-md font-medium capitalize transition-colors ${
+                  className={`px-3 py-1.5 rounded-md font-medium capitalize transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     filterStatus === st
                       ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
@@ -277,8 +277,8 @@ export function MySubmissionsClient({
                 : 'Try selecting a different filter above or create a new draft.'}
             </p>
             {filterStatus === 'all' && (
-              <Button asChild className="mt-4" size="sm">
-                <Link href="/submit">Create Submission</Link>
+              <Button asChild className="mt-4 min-h-[44px]" size="sm">
+                <Link href="/submit">Create submission</Link>
               </Button>
             )}
           </div>
@@ -421,7 +421,7 @@ export function MySubmissionsClient({
                                   handleCopy(sub.id, sub.latestContent || '')
                                 }
                                 title="Copy approved text"
-                                className="h-8 text-xs gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
+                                className="min-h-[44px] text-xs gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
                               >
                                 {copiedId === sub.id ? (
                                   <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -446,7 +446,7 @@ export function MySubmissionsClient({
                                   )
                                 }
                                 title="Download as text file"
-                                className="h-8 text-xs gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
+                                className="min-h-[44px] text-xs gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
                               >
                                 <Download className="h-3.5 w-3.5" />
                                 <span className="hidden sm:inline">
@@ -456,9 +456,9 @@ export function MySubmissionsClient({
                             </>
                           )}
 
-                          <Button asChild variant="outline" size="sm">
+                          <Button asChild variant="outline" size="sm" className="min-h-[44px]">
                             <Link href={`/submit/${sub.id}`}>
-                              <span>Open</span>
+                              <span>Open submission</span>
                               <ArrowRight className="h-3 w-3 ml-1" />
                             </Link>
                           </Button>
