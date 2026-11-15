@@ -22,6 +22,9 @@ import {
   ShieldAlert,
   Loader2,
   FileText,
+  Copy,
+  Download,
+  Check,
 } from 'lucide-react';
 
 export interface FindingItem {
@@ -244,6 +247,40 @@ export function SubmissionReviewClient({
     initialVersions[0]?.content || '',
   );
   const [submissionStatus, setSubmissionStatus] = useState(submission.status);
+  const [copied, setCopied] = useState(false);
+
+  function getApprovedContent(): string {
+    return latestVersion?.content || activeVersion?.content || workingText;
+  }
+
+  async function handleCopyApprovedText() {
+    const textToCopy = getApprovedContent();
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  }
+
+  function handleDownloadApprovedText() {
+    const textToDownload = getApprovedContent();
+    const blob = new Blob([textToDownload], {
+      type: 'text/plain;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeTitle = (submission.title || 'approved-post')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-');
+    a.download = `${safeTitle}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
   const [allFindings, setAllFindings] =
     useState<FindingItem[]>(initialFindings);
   const [aiStatus, setAiStatus] = useState<'ok' | 'unavailable' | 'unknown'>(
@@ -704,6 +741,34 @@ export function SubmissionReviewClient({
 
         {/* Action Buttons: Re-check & Send for Review */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {submissionStatus === 'approved' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyApprovedText}
+                className="gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                <span>{copied ? 'Copied!' : 'Copy approved text'}</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadApprovedText}
+                className="gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download as text file</span>
+              </Button>
+            </>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -741,6 +806,49 @@ export function SubmissionReviewClient({
           </Button>
         </div>
       </div>
+
+      {/* Approved Post Notice & Actions Banner */}
+      {submissionStatus === 'approved' && (
+        <div className="p-4 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                This post has been approved!
+              </p>
+              <p className="text-xs text-emerald-800/80 dark:text-emerald-300">
+                You can copy the approved wording or download it as a text file.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleCopyApprovedText}
+              className="gap-1.5 border-emerald-300 dark:border-emerald-700 bg-background hover:bg-emerald-100 dark:hover:bg-emerald-900/60"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              <span>{copied ? 'Copied!' : 'Copy approved text'}</span>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleDownloadApprovedText}
+              className="gap-1.5 border-emerald-300 dark:border-emerald-700 bg-background hover:bg-emerald-100 dark:hover:bg-emerald-900/60"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download as text file</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Version History List (Version 1, Version 2, etc. with date) */}
       <div className="bg-card border border-border rounded-xl p-4 shadow-sm">

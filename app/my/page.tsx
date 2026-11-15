@@ -33,6 +33,7 @@ async function MySubmissionsContent() {
 
   let versionCountMap = new Map<string, number>();
   let latestVersionIdMap = new Map<string, string>();
+  let latestContentMap = new Map<string, string>();
   let latestFindingsCountMap = new Map<string, number>();
   let topMistakes: RuleMistakeStat[] = [];
   let totalFindingsCount = 0;
@@ -45,7 +46,7 @@ async function MySubmissionsContent() {
     // 2. Fetch all versions for user's submissions
     const { data: allVersions } = await admin
       .from('versions')
-      .select('id, submission_id, version_no')
+      .select('id, submission_id, version_no, content')
       .in('submission_id', subIds)
       .order('version_no', { ascending: false });
 
@@ -58,9 +59,10 @@ async function MySubmissionsContent() {
         (versionCountMap.get(v.submission_id) || 0) + 1,
       );
 
-      // Latest version id (first one encountered per sub since ordered version_no desc)
+      // Latest version id & content (first one encountered per sub since ordered version_no desc)
       if (!latestVersionIdMap.has(v.submission_id)) {
         latestVersionIdMap.set(v.submission_id, v.id);
+        latestContentMap.set(v.submission_id, v.content || '');
       }
     }
 
@@ -203,6 +205,7 @@ async function MySubmissionsContent() {
         latestReviewerNote: approvalInfo?.note || null,
         latestDecision: approvalInfo?.decision || null,
         resolutionNote: escInfo?.resolution_note || null,
+        latestContent: latestContentMap.get(s.id) || '',
       };
     });
 

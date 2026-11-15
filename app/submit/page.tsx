@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { requireUser, getMyMemberships } from '@/lib/auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { SubmitForm } from './submit-form';
 import { Button } from '@/components/ui/button';
 import { UploadPanel } from '@/components/upload-panel';
@@ -45,6 +46,22 @@ async function SubmitContent({ searchParams }: SubmitContentProps) {
       ? companyId
       : companyOptions[0].companyId;
 
+  const admin = createAdminClient();
+  const companyIds = companyOptions.map((c) => c.companyId);
+  const { data: rulesData } = await admin
+    .from('rules')
+    .select('company_id')
+    .in('company_id', companyIds);
+
+  const ruleCountsByCompany: Record<string, number> = {};
+  for (const c of companyOptions) {
+    ruleCountsByCompany[c.companyId] = 0;
+  }
+  for (const r of rulesData || []) {
+    ruleCountsByCompany[r.company_id] =
+      (ruleCountsByCompany[r.company_id] || 0) + 1;
+  }
+
   return (
     <div className="bg-card border border-border rounded-xl p-6 sm:p-8 shadow-sm">
       <UploadPanel
@@ -55,6 +72,7 @@ async function SubmitContent({ searchParams }: SubmitContentProps) {
         <SubmitForm
           companies={companyOptions}
           defaultCompanyId={preselected}
+          ruleCounts={ruleCountsByCompany}
         />
       </UploadPanel>
     </div>

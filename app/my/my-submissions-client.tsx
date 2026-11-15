@@ -17,6 +17,9 @@ import {
   Building2,
   Calendar,
   ShieldAlert,
+  Copy,
+  Download,
+  Check,
 } from 'lucide-react';
 
 export interface MySubmissionItem {
@@ -32,6 +35,7 @@ export interface MySubmissionItem {
   latestReviewerNote?: string | null;
   latestDecision?: string | null;
   resolutionNote?: string | null;
+  latestContent?: string;
 }
 
 export interface RuleMistakeStat {
@@ -108,6 +112,34 @@ export function MySubmissionsClient({
   totalFindingsCount,
 }: MySubmissionsClientProps) {
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function handleCopy(id: string, text: string) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  }
+
+  function handleDownload(title: string, text: string) {
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeTitle = (title || 'approved-post')
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-');
+    a.download = `${safeTitle}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   const filteredSubmissions =
     filterStatus === 'all'
@@ -378,12 +410,59 @@ export function MySubmissionsClient({
 
                       {/* Action Link */}
                       <td className="px-5 py-4 text-right">
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/submit/${sub.id}`}>
-                            <span>Open</span>
-                            <ArrowRight className="h-3 w-3 ml-1" />
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          {sub.status === 'approved' && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleCopy(sub.id, sub.latestContent || '')
+                                }
+                                title="Copy approved text"
+                                className="h-8 text-xs gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
+                              >
+                                {copiedId === sub.id ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden sm:inline">
+                                  {copiedId === sub.id
+                                    ? 'Copied'
+                                    : 'Copy approved text'}
+                                </span>
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDownload(
+                                    sub.title,
+                                    sub.latestContent || '',
+                                  )
+                                }
+                                title="Download as text file"
+                                className="h-8 text-xs gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">
+                                  Download as text file
+                                </span>
+                              </Button>
+                            </>
+                          )}
+
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/submit/${sub.id}`}>
+                              <span>Open</span>
+                              <ArrowRight className="h-3 w-3 ml-1" />
+                            </Link>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
